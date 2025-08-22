@@ -10,7 +10,7 @@ interface TaskContextType {
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
-  generateSchedule: (userId: string) => void;
+  generateSchedule: () => Promise<void>;
   splitTask: (taskId: string, intervals: number) => void;
   loadTasks: (userId?: string) => Promise<void>;
   loadSchedule: () => Promise<void>;
@@ -102,19 +102,15 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const generateSchedule = async (userId: string) => {
-  try {
-    const { scheduleEntries, conflicts } = await apiService.generateSchedule(userId, []);
-    setScheduleEntries(scheduleEntries);
-    if (conflicts && conflicts.length > 0) {
-      // handle conflicts if needed
-      console.warn('Conflicts detected:', conflicts);
+  const generateSchedule = async () => {
+    try {
+      const scheduleEntries = await apiService.generateSchedule();
+      setScheduleEntries(scheduleEntries);
+    } catch (error) {
+      console.error('Failed to generate schedule:', error);
+      throw error;
     }
-  } catch (error) {
-    console.error('Failed to generate schedule:', error);
-    throw error;
-  }
-};
+  };
 
 
   const loadSchedule = async () => {
