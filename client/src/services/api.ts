@@ -130,7 +130,7 @@ class ApiService {
   }
 
   // Schedule methods
-  async generateSchedule(userId: string, p0: never[]) {
+  async generateSchedule() {
     return this.request('/schedule/generate', {
       method: 'POST',
     });
