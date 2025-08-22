@@ -1,10 +1,29 @@
 import { useState } from "react";
 import { useTask } from "../contexts/TaskContext";
-import { Calendar } from "lucide-react";
+import { useUser } from "../contexts/UserContext";
+import { Calendar, RotateCcw, Plus } from "lucide-react";
 
 export const ScheduleView: React.FC = () => {
-	const { scheduleEntries } = useTask();
+	const { scheduleEntries, generateSchedule } = useTask();
+	const { currentUser } = useUser();
 	const [view, setView] = useState<'day' | 'week' | 'month'>('week');
+	const [isGenerating, setIsGenerating] = useState(false);
+
+	const handleGenerateSchedule = async () => {
+		if (!currentUser) {
+			console.error('No current user found');
+			return;
+		}
+
+		setIsGenerating(true);
+		try {
+			await generateSchedule(currentUser.id);
+		} catch (error) {
+			console.error('Failed to generate schedule:', error);
+		} finally {
+			setIsGenerating(false);
+		}
+	};
 
 	return (
 		<div className="space-y-6">
@@ -27,6 +46,16 @@ export const ScheduleView: React.FC = () => {
 							</button>
 						))}
 					</div>
+					{scheduleEntries && scheduleEntries.length > 0 && (
+						<button
+							onClick={handleGenerateSchedule}
+							disabled={isGenerating || !currentUser}
+							className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							<RotateCcw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+							<span>{isGenerating ? 'Regenerating...' : 'Regenerate Schedule'}</span>
+						</button>
+					)}
 				</div>
 			</div>
 			<div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -35,9 +64,17 @@ export const ScheduleView: React.FC = () => {
 						<div className="text-center py-12">
 							<Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
 							<h3 className="text-lg font-medium text-gray-900 mb-2">No Schedule Generated</h3>
-							<p className="text-gray-600 mb-4">
+							<p className="text-gray-600 mb-6">
 								Generate a schedule to see your tasks organized by time.
 							</p>
+							<button
+								onClick={handleGenerateSchedule}
+								disabled={isGenerating || !currentUser}
+								className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								<Plus className={`w-5 h-5 ${isGenerating ? 'animate-spin' : ''}`} />
+								<span>{isGenerating ? 'Generating Schedule...' : 'Generate Schedule'}</span>
+							</button>
 						</div>
 					) : (
 						<div className="space-y-4">
