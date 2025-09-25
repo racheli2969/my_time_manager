@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { apiService } from '../services/api';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import GoogleSignInButton from './GoogleSignInButton';
 
 interface LoginFormProps {
   onLogin: (user: any) => void;
@@ -47,6 +48,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGuestMode }) =>
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = (user: any) => {
+    // Save user id to localStorage (consistent with regular login)
+    if (user && user.id) {
+      window.localStorage.setItem('currentUserId', user.id);
+    }
+    onLogin(user);
+    navigate('/main');
   };
 
   const handleGuestMode = () => {
@@ -106,6 +116,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGuestMode }) =>
             {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Sign Up'}
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="flex items-center my-6">
+          <div className="flex-1 border-t border-gray-300"></div>
+          <span className="px-4 text-gray-500 text-sm">or</span>
+          <div className="flex-1 border-t border-gray-300"></div>
+        </div>
+
+        {/* Google Sign-In Button */}
+        <GoogleSignInButton
+          onSuccess={handleGoogleSuccess}
+          onError={(error) => setError(error)}
+          disabled={loading}
+          className="mb-6"
+        />
+
         <p className="text-sm text-center mt-6">
           {isLogin ? (
             <span>
