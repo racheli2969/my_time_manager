@@ -76,6 +76,22 @@ class ApiService {
     return response;
   }
 
+  /**
+   * Authenticate user with Google OAuth credential
+   * @param credential - JWT token from Google
+   * @returns Authentication response with user data and JWT token
+   */
+  async loginWithGoogle(credential: string) {
+    const response = await this.request('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    });
+    
+    this.token = response.token;
+    localStorage.setItem('token', response.token);
+    return response;
+  }
+
   logout() {
     this.token = null;
     localStorage.removeItem('token');

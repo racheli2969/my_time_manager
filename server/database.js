@@ -21,7 +21,9 @@ const createTables = () => {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
+      password TEXT,
+      google_id TEXT UNIQUE,
+      profile_picture TEXT,
       role TEXT CHECK(role IN ('user', 'team-member', 'admin')) DEFAULT 'user',
       working_hours_start TEXT DEFAULT '09:00',
       working_hours_end TEXT DEFAULT '17:00',
@@ -164,6 +166,36 @@ const createTables = () => {
   console.log('Database tables created successfully');
 };
 
+/**
+ * Migrate existing database to support Google authentication
+ * Adds google_id and profile_picture columns to users table if they don't exist
+ */
+const migrateForGoogleAuth = () => {
+  try {
+    // Check if google_id column exists
+    const tableInfo = db.prepare("PRAGMA table_info(users)").all();
+    const hasGoogleId = tableInfo.some(col => col.name === 'google_id');
+    const hasProfilePicture = tableInfo.some(col => col.name === 'profile_picture');
+
+    if (!hasGoogleId) {
+      console.log('Adding google_id column to users table...');
+      // Add column without UNIQUE constraint first
+      db.exec('ALTER TABLE users ADD COLUMN google_id TEXT');
+      // Create unique index separately
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL');
+    }
+
+    if (!hasProfilePicture) {
+      console.log('Adding profile_picture column to users table...');
+      db.exec('ALTER TABLE users ADD COLUMN profile_picture TEXT');
+    }
+
+    console.log('Google authentication migration completed successfully');
+  } catch (error) {
+    console.error('Error during Google auth migration:', error);
+  }
+};
+
 // Seed default admin user
 const seedDefaultUser = async () => {
   const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@taskmanagement.com');
@@ -184,6 +216,7 @@ const seedDefaultUser = async () => {
 // Initialize database
 export const initializeDatabase = async () => {
   createTables();
+  migrateForGoogleAuth();
   await seedDefaultUser();
 };
 
