@@ -12,7 +12,6 @@ interface TaskFormProps {
 }
 
 export const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
-  const [showOnlyMine, setShowOnlyMine] = useState(false);
   const { users } = useUser();
   // Ensure currentUserId is set in localStorage before rendering
   useEffect(() => {
@@ -27,10 +26,12 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) =>
   }, [users]);
   const { teams } = useTeam();
   // State for form fields
+  // Default dueDate to today
+  const todayStr = new Date().toISOString().split('T')[0];
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    dueDate: '',
+    dueDate: todayStr,
     estimatedDuration: 60,
     priority: 'medium' as Task['priority'],
     status: 'todo' as Task['status'],
@@ -52,8 +53,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) =>
         teamId: task.teamId || '',
         tags: task.tags || []
       });
+    } else {
+      // On create, default assignedTo to current user
+      if (users && users.length > 0) {
+        setFormData(f => ({ ...f, assignedTo: users[0].id }));
+      }
     }
-  }, [task]);
+  }, [task, users]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +84,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) =>
       ...formData,
       dueDate: new Date(formData.dueDate),
       assignedTo,
-      teamId: formData.teamId || undefined
+      teamId: formData.teamId || undefined,
+      start: new Date() // Assuming `start` is the current date/time. Adjust as needed.
     });
   };
 
@@ -181,28 +188,23 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) =>
                 <option value="" disabled>Loading users...</option>
               ) : (
                 <>
-                  <option value="">Unassigned</option>
-                  {(() => {
-                    const currentUserId = typeof window !== 'undefined' ? window.localStorage.getItem(LOCAL_STORAGE_CURRENT_USER_ID) || '' : '';
-                    let assignableUserIds = new Set<string>(currentUserId ? [currentUserId] : []);
-                    if (formData.teamId) {
-                      const selectedTeam = teams.find(t => t.id === formData.teamId);
-                      if (selectedTeam) {
-                        selectedTeam.members.forEach(memberId => assignableUserIds.add(memberId));
-                      }
-                    }
-                    let filteredUsers = users.filter(user => assignableUserIds.has(user.id));
-                    if (showOnlyMine && currentUserId) {
-                      filteredUsers = filteredUsers.filter(user => user.id === currentUserId);
-                    }
-                    const options = filteredUsers
-                      .map(user => (
-                        <option key={user.id} value={user.id}>
-                          {user.id === currentUserId ? `${user.name} (Me)` : user.name}
-                        </option>
-                      ));
-                    return options.length > 0 ? options : null;
-                  })()}
+                  {formData.teamId
+                    ? (() => {
+                        // If team selected, show all team members
+                        const selectedTeam = teams.find(t => t.id === formData.teamId);
+                        if (!selectedTeam) return null;
+                        return users.filter(u => selectedTeam.members.includes(u.id)).map(user => (
+                          <option key={user.id} value={user.id}>
+                            {user.name}
+                          </option>
+                        ));
+                      })()
+                    : (() => {
+                        // Only current user
+                        const currentUserId = typeof window !== 'undefined' ? window.localStorage.getItem('currentUserId') || '' : '';
+                        const me = users.find(u => u.id === currentUserId);
+                        return me ? <option value={me.id}>{me.name} (Me)</option> : null;
+                      })()}
                 </>
               )}
             </select>

@@ -8,34 +8,61 @@ interface UserContextType {
   teamMembers: User[];
   login: (user: User) => void;
   logout: () => void;
-  updateUser: (user: User) => void;
+  updateUser: (user: User) => Promise<void>;
   addUser: (user: Omit<User, 'id'>) => void;
   loadUsers: () => Promise<void>;
+  loadCurrentUser: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  React.useEffect(() => {
-    loadUsers();
-  }, []);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Persist currentUser in localStorage to avoid resetting on every reload
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const stored = localStorage.getItem('currentUser');
+    return stored ? JSON.parse(stored) : null;
+  });
   const [users, setUsers] = useState<User[]>([]);
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
 
+  React.useEffect(() => {
+    loadUsers();
+    loadCurrentUser();
+  }, []);
+
+  // Just set the user on login
   const login = (user: User) => {
     setCurrentUser(user);
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    if (user.id) {
+      localStorage.setItem('currentUserId', user.id);
+    }
   };
 
   const logout = () => {
     setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('currentUserId');
     apiService.logout();
   };
 
-  const updateUser = (updatedUser: User) => {
-    setUsers(prev => prev.map(user => user.id === updatedUser.id ? updatedUser : user));
-    if (currentUser && updatedUser.id === currentUser.id) {
-      setCurrentUser(updatedUser);
+  // Update user preferences in DB and state
+  const updateUser = async (updatedUser: User) => {
+    try {
+      const savedUser = await apiService.updateProfile({
+        name: updatedUser.name,
+        email: updatedUser.email,
+        workingHours: updatedUser.workingHours
+      });
+      setUsers(prev => prev.map(user => user.id === savedUser.id ? savedUser : user));
+      if (currentUser && savedUser.id === currentUser.id) {
+        setCurrentUser(savedUser);
+        localStorage.setItem('currentUser', JSON.stringify(savedUser));
+        localStorage.setItem('currentUserId', savedUser.id);
+      }
+    } catch (error) {
+      console.error('Failed to update user:', error);
     }
   };
 
@@ -56,6 +83,21 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Load current user profile from backend
+  const loadCurrentUser = async () => {
+    try {
+      // Try to get user profile from backend
+      const profile = await apiService.getProfile();
+      if (profile && profile.id) {
+        setCurrentUser(profile);
+        localStorage.setItem('currentUser', JSON.stringify(profile));
+        localStorage.setItem('currentUserId', profile.id);
+      }
+    } catch (error) {
+      console.error('Failed to load current user:', error);
+    }
+  };
+
   return (
     <UserContext.Provider value={{
       currentUser,
@@ -66,6 +108,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       updateUser,
       addUser,
       loadUsers,
+      loadCurrentUser,
     }}>
       {children}
     </UserContext.Provider>

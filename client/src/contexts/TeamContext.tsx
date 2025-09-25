@@ -26,6 +26,10 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  React.useEffect(() => {
+    loadTeams();
+  }, []);
+
   const addTeam = async (teamData: Omit<Team, 'id' | 'createdAt'>) => {
     try {
       const newTeam = await apiService.createTeam(teamData);

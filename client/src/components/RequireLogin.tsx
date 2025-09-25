@@ -29,13 +29,14 @@ export const RequireLogin: React.FC<RequireLoginProps> = ({ children, action, me
     <>
       {children(handleTrigger)}
       {showLoginPrompt && (
-        <Dialog open={showLoginPrompt} onClose={() => setShowLoginPrompt(false)}>
-          <div className="p-6 text-center">
-            <h2 className="text-xl font-bold mb-2">Login Required</h2>
-            <p className="mb-4">{message || 'You must be logged in to perform this action.'}</p>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => window.location.href = '/login'}>Login</button>
-          </div>
-        </Dialog>
+        <Dialog 
+          open={showLoginPrompt} 
+          onClose={() => setShowLoginPrompt(false)} 
+          title="Login Required" 
+          message={message || 'You must be logged in to perform this action.'} 
+          onRedirect={() => window.location.href = '/login'} 
+          redirectLabel="Login" 
+        />
       )}
     </>
   );

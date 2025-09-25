@@ -100,10 +100,64 @@ const createTables = () => {
       end_time DATETIME NOT NULL,
       title TEXT NOT NULL,
       priority TEXT NOT NULL,
+      is_manual BOOLEAN DEFAULT FALSE,
+      is_locked BOOLEAN DEFAULT FALSE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
       FOREIGN KEY (interval_id) REFERENCES task_intervals (id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+  `);
+
+  // User preferences table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE,
+      auto_split_long_tasks BOOLEAN DEFAULT TRUE,
+      max_task_duration INTEGER DEFAULT 180,
+      break_duration INTEGER DEFAULT 15,
+      work_buffer_minutes INTEGER DEFAULT 30,
+      preferred_work_start TEXT DEFAULT '09:00',
+      preferred_work_end TEXT DEFAULT '17:00',
+      allow_weekend_scheduling BOOLEAN DEFAULT FALSE,
+      efficiency_curve TEXT DEFAULT 'normal',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Personal events table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS personal_events (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      start_time DATETIME NOT NULL,
+      end_time DATETIME NOT NULL,
+      is_recurring BOOLEAN DEFAULT FALSE,
+      recurrence_pattern TEXT,
+      event_type TEXT DEFAULT 'personal',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Schedule conflicts table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schedule_conflicts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      schedule_entry_id TEXT,
+      conflict_type TEXT NOT NULL,
+      conflict_details TEXT,
+      is_resolved BOOLEAN DEFAULT FALSE,
+      resolution_action TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+      FOREIGN KEY (schedule_entry_id) REFERENCES schedule_entries (id) ON DELETE CASCADE
     )
   `);
 

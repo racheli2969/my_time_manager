@@ -53,4 +53,50 @@ export interface ScheduleEntry {
   end: Date;
   title: string;
   priority: Task['priority'];
+  isManual?: boolean;
+  isLocked?: boolean;
+}
+
+export interface UserPreferences {
+  id: string;
+  userId: string;
+  autoSplitLongTasks: boolean;
+  maxTaskDuration: number; // in minutes
+  breakDuration: number; // in minutes
+  workBufferMinutes: number; // buffer time around tasks
+  preferredWorkStart: string; // HH:MM format
+  preferredWorkEnd: string; // HH:MM format
+  allowWeekendScheduling: boolean;
+  efficiencyCurve: 'morning' | 'afternoon' | 'evening' | 'normal';
+}
+
+export interface PersonalEvent {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  start: Date;
+  end: Date;
+  isRecurring: boolean;
+  recurrencePattern?: string;
+  eventType: 'personal' | 'meeting' | 'appointment' | 'break' | 'holiday';
+}
+
+export interface ScheduleConflict {
+  id: string;
+  userId: string;
+  scheduleEntryId?: string;
+  conflictType: 'overlap' | 'deadline_miss' | 'worktime_violation' | 'preference_violation';
+  conflictDetails: string;
+  isResolved: boolean;
+  resolutionAction?: string;
+}
+
+export interface ScheduleGenerationOptions {
+  startDate?: Date;
+  endDate?: Date;
+  respectPersonalEvents: boolean;
+  allowManualOverride: boolean;
+  prioritizeUrgentTasks: boolean;
+  optimizeForEfficiency: boolean;
 }

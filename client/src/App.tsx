@@ -13,15 +13,33 @@ import { TeamProvider } from './contexts/TeamContext';
 import { Dialog } from './components/Dialog';
 import MyCalendar from './components/MyCalendar';
 import PaymentManager from './components/PaymentManager';
+import { useTask } from './contexts/TaskContext';
 
 export type ViewType = 'tasks' | 'schedule' | 'calendar' | 'teams' | 'payments' | 'profile';
 
 const MainPage: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('tasks');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { currentUser, logout } = useUser();
+  const { currentUser } = useUser();
+  const { loadTasks, resetTaskPaging } = useTask();
   const [dialog, setDialog] = useState<{ message: string; redirect?: boolean } | null>(null);
   const navigate = useNavigate();
+  const prevUserIdRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    const currentUserId = currentUser?.id || null;
+    
+    // Only load tasks if the user changed
+    if (currentUserId !== prevUserIdRef.current) {
+      prevUserIdRef.current = currentUserId;
+      
+      if (currentUserId) {
+        // Reset pagination state and load tasks for the new user
+        resetTaskPaging();
+        loadTasks(currentUserId, 1, 6, false); // explicitly load first page, replace existing
+      }
+    }
+  }, [currentUser?.id]); // Only depend on the user ID, not the functions
 
   const handleAction = (action: () => void) => {
     if (!currentUser) {
@@ -51,32 +69,28 @@ const MainPage: React.FC = () => {
   };
 
   return (
-    <TaskProvider>
-      <TeamProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Header />
-          <div className="flex">
-            <Sidebar
-              currentView={currentView}
-              onViewChange={setCurrentView}
-              toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-              isOpen={isSidebarOpen}
-            />
-            <main className={isSidebarOpen ? "flex-1 ml-64 p-6 relative" : "flex-1 ml-12 p-6 relative"}>
-              {dialog && (
-                <Dialog
-                  title="Action Required"
-                  message={dialog.message}
-                  onClose={() => setDialog(null)}
-                  onRedirect={dialog.redirect ? () => navigate('/login') : undefined}
-                  redirectLabel="Go to Login" open={false}                />
-              )}
-              {renderCurrentView()}
-            </main>
-          </div>
-        </div>
-      </TeamProvider>
-    </TaskProvider>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex">
+        <Sidebar
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          isOpen={isSidebarOpen}
+        />
+        <main className={isSidebarOpen ? "flex-1 ml-64 p-6 relative" : "flex-1 ml-12 p-6 relative"}>
+          {dialog && (
+            <Dialog
+              title="Action Required"
+              message={dialog.message}
+              onClose={() => setDialog(null)}
+              onRedirect={dialog.redirect ? () => navigate('/login') : undefined}
+              redirectLabel="Go to Login" open={false}                />
+          )}
+          {renderCurrentView()}
+        </main>
+      </div>
+    </div>
   );
 };
 
@@ -91,16 +105,21 @@ const LoginPage: React.FC = () => {
   return <LoginForm onLogin={login} onGuestMode={handleGuestMode} />;
 };
 
+
 function App() {
   return (
     <BrowserRouter>
-      <UserProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/main" element={<MainPage />} />
-          <Route path="/" element={<LoginPage />} /> {/* Default to login */}
-        </Routes>
-      </UserProvider>
+      <TaskProvider>
+        <TeamProvider>
+          <UserProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/main" element={<MainPage />} />
+              <Route path="/" element={<LoginPage />} /> {/* Default to login */}
+            </Routes>
+          </UserProvider>
+        </TeamProvider>
+      </TaskProvider>
     </BrowserRouter>
   );
 }

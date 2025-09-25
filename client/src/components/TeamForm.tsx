@@ -24,32 +24,37 @@ export const TeamForm: React.FC<TeamFormProps> = ({ team, onClose }) => {
       setFormData({
         name: team.name,
         description: team.description,
-        members: team.members
+        members: team.members.filter((id, idx, arr) => arr.indexOf(id) === idx) // dedupe
       });
+    } else {
+      setFormData({ name: '', description: '', members: [] });
     }
   }, [team]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!currentUser) {
       onClose();
       return;
     }
-    
     if (team) {
-      updateTeam({
+      // Always ensure admin is in members
+      const members = Array.from(new Set([team.adminId, ...formData.members]));
+      await updateTeam({
         ...team,
-        ...formData
+        name: formData.name,
+        description: formData.description,
+        members
       });
     } else {
-      addTeam({
+      // Always ensure admin is in members
+      const members = Array.from(new Set([currentUser.id, ...formData.members]));
+      await addTeam({
         ...formData,
         adminId: currentUser.id,
-        members: [currentUser.id, ...formData.members]
+        members
       });
     }
-    
     onClose();
   };
 
@@ -66,7 +71,10 @@ export const TeamForm: React.FC<TeamFormProps> = ({ team, onClose }) => {
     return null;
   }
 
-  const availableUsers = users.filter(user => user.id !== currentUser.id);
+  // For editing, allow all users except admin to be toggled
+  const availableUsers = team
+    ? users.filter(user => user.id !== team.adminId)
+    : users.filter(user => user.id !== currentUser.id);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

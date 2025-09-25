@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Users, UserPlus, Trash2 } from 'lucide-react';
 import { useTeam } from '../contexts/TeamContext';
 import { useUser } from '../contexts/UserContext';
@@ -7,14 +7,29 @@ import { Team } from '../types';
 
 export const TeamManager: React.FC = () => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const { teams, deleteTeam, addMemberToTeam, removeMemberFromTeam } = useTeam();
+  const { teams, deleteTeam, addMemberToTeam, removeMemberFromTeam, loadTeams } = useTeam();
+  // Load teams from DB on mount
+  useEffect(() => {
+    loadTeams();
+    // eslint-disable-next-line
+  }, []);
   const { users, currentUser } = useUser();
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  // For user picker modal
+  const [showUserPicker, setShowUserPicker] = useState(false);
+  const [userPickerTeam, setUserPickerTeam] = useState<Team | null>(null);
+
 
   const handleEditTeam = (team: Team) => {
     setEditingTeam(team);
     setShowTeamForm(true);
+  };
+
+  // Open user picker for adding members
+  const handleEditMembers = (team: Team) => {
+    setUserPickerTeam(team);
+    setShowUserPicker(true);
   };
 
   const handleCloseForm = () => {
@@ -115,7 +130,11 @@ export const TeamManager: React.FC = () => {
                       Members ({team.members.length})
                     </span>
                     {canManageTeam(team) && (
-                      <button className="text-blue-600 hover:text-blue-800">
+                      <button
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Add Members"
+                        onClick={() => handleEditMembers(team)}
+                      >
                         <UserPlus className="w-4 h-4" />
                       </button>
                     )}
@@ -152,6 +171,49 @@ export const TeamManager: React.FC = () => {
           team={editingTeam}
           onClose={handleCloseForm}
         />
+      )}
+
+      {/* User Picker Modal for adding members */}
+      {showUserPicker && userPickerTeam && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Add Members to {userPickerTeam.name}</h3>
+              <button
+                onClick={() => { setShowUserPicker(false); setUserPickerTeam(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <span className="sr-only">Close</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 rounded-md p-2 mb-4">
+              {users.filter(u => !userPickerTeam.members.includes(u.id)).length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-2">No users available to add</p>
+              ) : (
+                users.filter(u => !userPickerTeam.members.includes(u.id)).map(user => (
+                  <div key={user.id} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">{user.name} <span className="text-xs text-gray-500">({user.email})</span></span>
+                    <button
+                      className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+                      onClick={() => {
+                        addMemberToTeam(userPickerTeam.id, user.id);
+                      }}
+                    >Add</button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => { setShowUserPicker(false); setUserPickerTeam(null); }}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

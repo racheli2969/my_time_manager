@@ -1,3 +1,4 @@
+
 import express from 'express';
 import db from '../database.js';
 import { authenticateToken } from '../middleware/auth.js';
@@ -30,6 +31,33 @@ router.get('/', authenticateToken, (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Get current user profile
+router.get('/profile', authenticateToken, (req, res) => {
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      workingHours: {
+        start: user.working_hours_start,
+        end: user.working_hours_end,
+        daysOfWeek: JSON.parse(user.working_days)
+      }
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+// Get current user profile
+// ...existing code...
+
 
 // Update user profile
 router.put('/profile', authenticateToken, (req, res) => {

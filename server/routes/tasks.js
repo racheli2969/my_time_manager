@@ -9,9 +9,13 @@ const router = express.Router();
 router.get('/', authenticateToken, (req, res) => {
   try {
     let tasks;
-    const { userId } = req.query;
+    const { userId, page, pageSize } = req.query;
+    // Parse page and pageSize, default to 1 and 6 if not provided
+    const pageNum = parseInt(page) > 0 ? parseInt(page) : 1;
+    const pageSizeNum = parseInt(pageSize) > 0 ? parseInt(pageSize) : 6;
+    const offset = (pageNum - 1) * pageSizeNum;
     if (userId) {
-      // Filter by createdBy or assignedTo
+      // Filter by createdBy or assignedTo, with paging
       tasks = db.prepare(`
         SELECT t.*, 
                u.name as assigned_to_name,
@@ -20,10 +24,11 @@ router.get('/', authenticateToken, (req, res) => {
         LEFT JOIN users u ON t.assigned_to = u.id
         LEFT JOIN teams tm ON t.team_id = tm.id
         WHERE t.created_by = ? OR t.assigned_to = ?
-        ORDER BY t.created_at DESC
-      `).all(userId, userId);
+  ORDER BY t.created_at DESC, t.ROWID DESC
+        LIMIT ? OFFSET ?
+      `).all(userId, userId, pageSizeNum, offset);
     } else {
-      // Default: all tasks for the logged-in user
+      // Default: all tasks for the logged-in user, with paging
       tasks = db.prepare(`
         SELECT t.*, 
                u.name as assigned_to_name,
@@ -34,8 +39,9 @@ router.get('/', authenticateToken, (req, res) => {
         WHERE t.created_by = ? OR t.assigned_to = ? OR t.team_id IN (
           SELECT team_id FROM team_members WHERE user_id = ?
         )
-        ORDER BY t.created_at DESC
-      `).all(req.user.id, req.user.id, req.user.id);
+  ORDER BY t.created_at DESC, t.ROWID DESC
+        LIMIT ? OFFSET ?
+      `).all(req.user.id, req.user.id, req.user.id, pageSizeNum, offset);
     }
 
     // Get intervals for each task

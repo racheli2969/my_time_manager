@@ -1,9 +1,13 @@
 const API_BASE_URL = 'http://localhost:3001/api';
 
 class ApiService {
-  async getTasksByUserOrAssigned(userId: string) {
+  async getTasksByUserOrAssigned(userId: string, page?: number, pageSize?: number) {
     // Backend should support filtering by createdBy or assignedTo
-    return this.request(`/tasks?userId=${userId}`);
+    let url = `/tasks?userId=${userId}`;
+    if (page !== undefined && pageSize !== undefined) {
+      url += `&page=${page}&pageSize=${pageSize}`;
+    }
+    return this.request(url);
   }
   private token: string | null = null;
 
@@ -23,13 +27,30 @@ class ApiService {
     };
 
     const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Network error' }));
-      throw new Error(error.error || 'Request failed');
+
+    // If response is 204 No Content, don't try to parse JSON
+    if (response.status === 204) {
+      return null;
     }
 
-    return response.json();
+    // Read the body only once
+    const text = await response.text();
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+
+    if (!response.ok) {
+      // If error, use parsed data or text as error message
+      const errorMsg = (data && data.error) ? data.error : (typeof data === 'string' ? data : 'Request failed');
+      throw new Error(errorMsg);
+    }
+
+    return data;
   }
 
   // Auth methods
@@ -61,8 +82,12 @@ class ApiService {
   }
 
   // Task methods
-  async getTasks() {
-    return this.request('/tasks');
+  async getTasks(page?: number, pageSize?: number) {
+    let url = '/tasks';
+    if (page !== undefined && pageSize !== undefined) {
+      url += `?page=${page}&pageSize=${pageSize}`;
+    }
+    return this.request(url);
   }
 
   async createTask(task: any) {
@@ -117,9 +142,14 @@ class ApiService {
     });
   }
 
+
   // User methods
   async getUsers() {
     return this.request('/users');
+  }
+
+  async getProfile() {
+    return this.request('/users/profile');
   }
 
   async updateProfile(profile: any) {
@@ -130,14 +160,65 @@ class ApiService {
   }
 
   // Schedule methods
-  async generateSchedule(userId: string, p0: never[]) {
+  async generateSchedule(userId: string, options: any = {}) {
     return this.request('/schedule/generate', {
       method: 'POST',
+      body: JSON.stringify(options),
     });
   }
 
   async getSchedule() {
     return this.request('/schedule');
+  }
+
+  async updateScheduleEntry(entryId: string, updates: any) {
+    return this.request(`/schedule/entry/${entryId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async getScheduleConflicts() {
+    return this.request('/schedule/conflicts');
+  }
+
+  async resolveConflict(conflictId: string, resolutionAction: string) {
+    return this.request(`/schedule/conflicts/${conflictId}/resolve`, {
+      method: 'PUT',
+      body: JSON.stringify({ resolutionAction }),
+    });
+  }
+
+  async getSchedulePreferences() {
+    return this.request('/schedule/preferences');
+  }
+
+  async updateSchedulePreferences(preferences: any) {
+    return this.request('/schedule/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  }
+
+  async addPersonalEvent(event: any) {
+    return this.request('/schedule/events', {
+      method: 'POST',
+      body: JSON.stringify(event),
+    });
+  }
+
+  async getPersonalEvents(startDate?: string, endDate?: string) {
+    let url = '/schedule/events';
+    if (startDate && endDate) {
+      url += `?startDate=${startDate}&endDate=${endDate}`;
+    }
+    return this.request(url);
+  }
+
+  async deletePersonalEvent(eventId: string) {
+    return this.request(`/schedule/events/${eventId}`, {
+      method: 'DELETE',
+    });
   }
 }
 

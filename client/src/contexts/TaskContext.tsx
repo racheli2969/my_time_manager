@@ -1,43 +1,110 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { apiService } from '../services/api';
-import { Task, TaskInterval, ScheduleEntry } from '../types';
+import type { Task, ScheduleEntry } from '../types';
 
-interface TaskContextType {
+type TaskContextType = {
   tasks: Task[];
   teamTasks: Task[];
   events: ScheduleEntry[];
   scheduleEntries: ScheduleEntry[];
+  conflicts: any[];
+  personalEvents: any[];
+  scheduleStats: any;
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
-  generateSchedule: (userId: string) => void;
+  generateSchedule: (userId: string, options?: any) => Promise<void>;
   splitTask: (taskId: string, intervals: number) => void;
-  loadTasks: (userId?: string) => Promise<void>;
+  updateScheduleEntry: (entryId: string, updates: any) => Promise<void>;
+  loadTasks: (userId?: string, page?: number, pageSize?: number, append?: boolean) => Promise<void>;
+  loadMoreTasks: (userId?: string) => Promise<void>;
+  hasMoreTasks: boolean;
+  resetTaskPaging: () => void;
   loadSchedule: () => Promise<void>;
-}
+  loadConflicts: () => Promise<void>;
+  resolveConflict: (conflictId: string, action: string) => Promise<void>;
+  addPersonalEvent: (event: any) => Promise<void>;
+  loadPersonalEvents: () => Promise<void>;
+  deletePersonalEvent: (eventId: string) => Promise<void>;
+};
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskPage, setTaskPage] = useState(1);
+  const [hasMoreTasks, setHasMoreTasks] = useState(true);
+  const pageSize = 6;
   const [teamTasks, setTeamTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<ScheduleEntry[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
+  const [conflicts, setConflicts] = useState<any[]>([]);
+  const [personalEvents, setPersonalEvents] = useState<any[]>([]);
+  const [scheduleStats, setScheduleStats] = useState<any>(null);
 
-  const loadTasks = async (userId?: string) => {
+  /**
+   * Loads tasks from the backend with paging support.
+   * @param userId - user to filter by
+   * @param page - page number (1-based)
+   * @param pageSize - number of tasks per page
+   * @param append - if true, append to current tasks; else, replace
+   */
+  const loadTasks = useCallback(async (userId?: string, page: number = 1, pageSizeParam: number = pageSize, append: boolean = false) => {
     try {
       let fetchedTasks;
       if (userId) {
-        // Backend should support filtering by createdBy or assignedTo
-        fetchedTasks = await apiService.getTasksByUserOrAssigned(userId);
+        fetchedTasks = await apiService.getTasksByUserOrAssigned(userId, page, pageSizeParam);
       } else {
-        fetchedTasks = await apiService.getTasks();
+        fetchedTasks = await apiService.getTasks(page, pageSizeParam);
       }
-      setTasks(fetchedTasks);
+      if (Array.isArray(fetchedTasks)) {
+        if (append) {
+          setTasks(prev => {
+            const existingIds = new Set(prev.map(t => t.id));
+            const newTasks = fetchedTasks.filter(t => !existingIds.has(t.id));
+            const combined = [...prev, ...newTasks];
+            console.log('[TaskContext] setTasks (append):', combined.length, 'prev:', prev.length, 'new:', newTasks.length);
+            return combined;
+          });
+          // Only update page if we successfully appended new tasks
+          if (fetchedTasks.length > 0) {
+            setTaskPage(page);
+          }
+        } else {
+          console.log('[TaskContext] setTasks (replace):', fetchedTasks.length);
+          setTasks(fetchedTasks);
+          setTaskPage(page);
+        }
+        // Set hasMoreTasks to false if we got fewer tasks than requested (indicating we're at the end)
+        setHasMoreTasks(fetchedTasks.length === pageSizeParam);
+      } else {
+        setHasMoreTasks(false);
+      }
     } catch (error) {
       console.error('Failed to load tasks:', error);
+      setHasMoreTasks(false);
     }
-  };
+  }, [pageSize]);
+
+  /**
+   * Loads the next page of tasks and appends them.
+   */
+  const loadMoreTasks = useCallback(async (userId?: string) => {
+    if (!hasMoreTasks) return; // Don't load if we know there are no more tasks
+    
+    const nextPage = taskPage + 1;
+    console.log('[TaskContext] Loading page:', nextPage, 'current page:', taskPage);
+    await loadTasks(userId, nextPage, pageSize, true);
+  }, [hasMoreTasks, taskPage, pageSize, loadTasks]);
+
+  /**
+   * Resets paging state and tasks (e.g. on logout or user change)
+   */
+  const resetTaskPaging = useCallback(() => {
+    setTaskPage(1);
+    setHasMoreTasks(true);
+    setTasks([]);
+  }, []);
 
   /**
    * Adds a new task, mapping frontend fields to backend expectations.
@@ -50,7 +117,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const payload = {
         title: taskData.title,
         description: taskData.description,
-        dueDate: taskData.dueDate,
+        dueDate: taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate,
         estimatedDuration: taskData.estimatedDuration,
         priority: taskData.priority,
         status: taskData.status,
@@ -59,7 +126,14 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         tags: taskData.tags || [],
       };
       const newTask = await apiService.createTask(payload);
-      setTasks(prev => [...prev, newTask]);
+      setTasks(prev => {
+        // Avoid duplicate if already present
+        if (prev.some(t => t.id === newTask.id)) return prev;
+        return [newTask, ...prev];
+      });
+      // Reset hasMoreTasks to true since we added a new task
+      // This ensures the "Load More" button appears if needed
+      setHasMoreTasks(true);
     } catch (error) {
       console.error('Failed to create task:', error);
       throw error;
@@ -102,19 +176,81 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const generateSchedule = async (userId: string) => {
-  try {
-    const { scheduleEntries, conflicts } = await apiService.generateSchedule(userId, []);
-    setScheduleEntries(scheduleEntries);
-    if (conflicts && conflicts.length > 0) {
-      // handle conflicts if needed
-      console.warn('Conflicts detected:', conflicts);
+  const generateSchedule = async (userId: string, options: any = {}) => {
+    try {
+      const result = await apiService.generateSchedule(userId, options);
+      setScheduleEntries(result.scheduleEntries || []);
+      setConflicts(result.conflicts || []);
+      setScheduleStats(result.stats || null);
+      
+      if (result.conflicts && result.conflicts.length > 0) {
+        console.warn('Conflicts detected:', result.conflicts);
+      }
+    } catch (error) {
+      console.error('Failed to generate schedule:', error);
+      throw error;
     }
-  } catch (error) {
-    console.error('Failed to generate schedule:', error);
-    throw error;
-  }
-};
+  };
+
+  const updateScheduleEntry = async (entryId: string, updates: any) => {
+    try {
+      const updatedEntry = await apiService.updateScheduleEntry(entryId, updates);
+      setScheduleEntries(prev => prev.map(entry => 
+        entry.id === entryId ? updatedEntry : entry
+      ));
+    } catch (error) {
+      console.error('Failed to update schedule entry:', error);
+      throw error;
+    }
+  };
+
+  const loadConflicts = async () => {
+    try {
+      const conflicts = await apiService.getScheduleConflicts();
+      setConflicts(conflicts);
+    } catch (error) {
+      console.error('Failed to load conflicts:', error);
+    }
+  };
+
+  const resolveConflict = async (conflictId: string, action: string) => {
+    try {
+      await apiService.resolveConflict(conflictId, action);
+      setConflicts(prev => prev.filter(conflict => conflict.id !== conflictId));
+    } catch (error) {
+      console.error('Failed to resolve conflict:', error);
+      throw error;
+    }
+  };
+
+  const addPersonalEvent = async (event: any) => {
+    try {
+      const newEvent = await apiService.addPersonalEvent(event);
+      setPersonalEvents(prev => [...prev, newEvent]);
+    } catch (error) {
+      console.error('Failed to add personal event:', error);
+      throw error;
+    }
+  };
+
+  const loadPersonalEvents = async () => {
+    try {
+      const events = await apiService.getPersonalEvents();
+      setPersonalEvents(events);
+    } catch (error) {
+      console.error('Failed to load personal events:', error);
+    }
+  };
+
+  const deletePersonalEvent = async (eventId: string) => {
+    try {
+      await apiService.deletePersonalEvent(eventId);
+      setPersonalEvents(prev => prev.filter(event => event.id !== eventId));
+    } catch (error) {
+      console.error('Failed to delete personal event:', error);
+      throw error;
+    }
+  };
 
 
   const loadSchedule = async () => {
@@ -132,13 +268,25 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       teamTasks,
       events,
       scheduleEntries,
+      conflicts,
+      personalEvents,
+      scheduleStats,
       addTask,
       updateTask,
       deleteTask,
       generateSchedule,
       splitTask,
+      updateScheduleEntry,
       loadTasks,
+      loadMoreTasks,
+      hasMoreTasks,
+      resetTaskPaging,
       loadSchedule,
+      loadConflicts,
+      resolveConflict,
+      addPersonalEvent,
+      loadPersonalEvents,
+      deletePersonalEvent,
     }}>
       {children}
     </TaskContext.Provider>
