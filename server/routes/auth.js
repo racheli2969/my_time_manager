@@ -6,14 +6,20 @@ const { sign } = pkg;
 
 import { v4 as uuidv4 } from 'uuid';
 import db from '../database.js';
-import  JWT_SECRET from '../middleware/auth.js';
+import JWT_SECRET from '../middleware/auth.js';
 import { OAuth2Client } from 'google-auth-library';
 
 const router = Router();
 
 // Initialize Google OAuth client
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// Validate Google Client ID on startup
+if (!GOOGLE_CLIENT_ID) {
+  console.warn('Warning: GOOGLE_CLIENT_ID environment variable is not set. Google authentication will not work.');
+}
+
+const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 // Register
 router.post('/register', async (req, res) => {
@@ -118,7 +124,7 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ error: 'Google credential is required' });
     }
 
-    if (!GOOGLE_CLIENT_ID) {
+    if (!GOOGLE_CLIENT_ID || !googleClient) {
       console.error('Google Client ID not configured');
       return res.status(500).json({ error: 'Google authentication not configured' });
     }
@@ -132,6 +138,10 @@ router.post('/google', async (req, res) => {
       });
     } catch (error) {
       console.error('Google token verification failed:', error);
+      // Handle specific error types
+      if (error.message && error.message.includes('Token expired')) {
+        return res.status(401).json({ error: 'Google token has expired. Please sign in again.' });
+      }
       return res.status(400).json({ error: 'Invalid Google credential' });
     }
 
@@ -156,18 +166,41 @@ router.post('/google', async (req, res) => {
           .run(googleId, picture || null, user.id);
         user.google_id = googleId;
         user.profile_picture = picture;
+      } else {
+        // Update profile picture even if Google ID exists
+        db.prepare('UPDATE users SET profile_picture = ? WHERE id = ?')
+          .run(picture || null, user.id);
+        user.profile_picture = picture;
+      }
+      
+      // Ensure working hours are set (for existing users who might not have them)
+      if (!user.working_hours_start || !user.working_hours_end || !user.working_days) {
+        db.prepare('UPDATE users SET working_hours_start = ?, working_hours_end = ?, working_days = ? WHERE id = ?')
+          .run('09:00', '17:00', '[1,2,3,4,5]', user.id);
+        user.working_hours_start = '09:00';
+        user.working_hours_end = '17:00';
+        user.working_days = '[1,2,3,4,5]';
       }
     } else {
       // Create new user
       const userId = uuidv4();
       
-      db.prepare(`
-        INSERT INTO users (id, name, email, google_id, profile_picture, role)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(userId, name, email, googleId, picture || null, 'user');
+      try {
+        db.prepare(`
+          INSERT INTO users (id, name, email, google_id, profile_picture, role, working_hours_start, working_hours_end, working_days)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(userId, name, email, googleId, picture || null, 'user', '09:00', '17:00', '[1,2,3,4,5]');
 
-      // Fetch the created user
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+        // Fetch the created user
+        user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+        
+        if (!user) {
+          throw new Error('Failed to retrieve created user');
+        }
+      } catch (dbError) {
+        console.error('Database error during user creation:', dbError);
+        return res.status(500).json({ error: 'Failed to create user account' });
+      }
     }
 
     // Generate JWT token
