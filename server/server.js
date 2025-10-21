@@ -11,6 +11,13 @@ import teamRoutes from './routes/teams.js';
 import userRoutes from './routes/users.js';
 import scheduleRoutes from './routes/schedule.js';
 
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+// recreate __dirname and __filename
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
