@@ -79,7 +79,11 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const fetchedUsers = await apiService.getUsers();
       setUsers(fetchedUsers);
     } catch (error) {
-      console.error('Failed to load users:', error);
+      if (error instanceof Error && error.message === 'Access token required') {
+        console.error('Access token is missing or invalid. Please log in again.');
+      } else {
+        console.error('Failed to load users:', error);
+      }
     }
   };
 
@@ -94,7 +98,11 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('currentUserId', profile.id);
       }
     } catch (error) {
-      console.error('Failed to load current user:', error);
+      if (error instanceof Error && error.message === 'Access token required') {
+        console.error('Access token is missing or invalid. Please log in again.');
+      } else {
+        console.error('Failed to load current user:', error);
+      }
     }
   };
 

@@ -79,6 +79,7 @@ class GoogleAuthService {
     if (this.isInitialized) {
       return;
     }
+    this.clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
     if (!this.clientId) {
       throw new Error('Google Client ID is not configured. Please set VITE_GOOGLE_CLIENT_ID in your environment variables.');

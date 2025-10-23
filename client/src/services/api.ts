@@ -15,7 +15,13 @@ class ApiService {
     this.token = localStorage.getItem('token');
   }
 
+  // Ensure token is refreshed from localStorage on every request
+  private refreshToken() {
+    this.token = localStorage.getItem('token');
+  }
+
   private async request(endpoint: string, options: RequestInit = {}) {
+    this.refreshToken(); // Refresh token before making a request
     const url = `${API_BASE_URL}${endpoint}`;
     const config: RequestInit = {
       headers: {

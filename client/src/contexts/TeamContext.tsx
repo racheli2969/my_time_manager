@@ -22,7 +22,11 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const fetchedTeams = await apiService.getTeams();
       setTeams(fetchedTeams);
     } catch (error) {
-      console.error('Failed to load teams:', error);
+      if (error instanceof Error && error.message === 'Access token required') {
+        console.error('Access token is missing or invalid. Please log in again.');
+      } else {
+        console.error('Failed to load teams:', error);
+      }
     }
   };
 

@@ -53,19 +53,29 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Initialize database and start server
+// Initialize database and return the server (useful for tests)
 const startServer = async () => {
   try {
     await initializeDatabase();
-    
-    app.listen(PORT, () => {
+
+    const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`API available at http://localhost:${PORT}/api`);
     });
+
+    return server;
   } catch (error) {
     console.error('Failed to start server:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
-startServer();
+// Only auto-start when not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  startServer().catch((err) => {
+    console.error('Startup failed:', err);
+    process.exit(1);
+  });
+}
+
+export { app, startServer };
