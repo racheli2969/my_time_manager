@@ -20,43 +20,87 @@ class ApiService {
     this.token = localStorage.getItem('token');
   }
 
-  private async request(endpoint: string, options: RequestInit = {}) {
-    this.refreshToken(); // Refresh token before making a request
+  private async refreshAuthToken(): Promise<void> {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await this.request('/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${refreshToken}`
+        }
+      });
+
+      // Store new tokens using consistent property names with backend response
+      this.token = response.accessToken;
+      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+    } catch (error) {
+      console.error('Failed to refresh auth token:', error);
+      this.logout();
+      throw error; // Re-throw to prevent infinite refresh loops
+    }
+  }
+
+  private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const token = localStorage.getItem('token');
+    this.token = token;
+
     const url = `${API_BASE_URL}${endpoint}`;
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+        ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
       ...options,
     };
 
-    const response = await fetch(url, config);
+    try {
+      const response = await fetch(url, config);
 
-    // If response is 204 No Content, don't try to parse JSON
-    if (response.status === 204) {
-      return null;
-    }
-
-    // Read the body only once
-    const text = await response.text();
-    let data = null;
-    if (text) {
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = text;
+      // Handle 401 Unauthorized
+      if (response.status === 401 && endpoint !== '/auth/refresh') {
+        try {
+          await this.refreshAuthToken();
+          // Retry the original request with new token
+          return this.request(endpoint, options);
+        } catch (refreshError) {
+          // If refresh fails, log out and throw error
+          this.logout();
+          throw new Error('Authentication failed. Please log in again.');
+        }
       }
-    }
 
-    if (!response.ok) {
-      // If error, use parsed data or text as error message
-      const errorMsg = (data && data.error) ? data.error : (typeof data === 'string' ? data : 'Request failed');
-      throw new Error(errorMsg);
-    }
+      if (response.status === 204) {
+        return null;
+      }
 
-    return data;
+      const text = await response.text();
+      let data = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = text;
+        }
+      }
+
+      if (!response.ok) {
+        const errorMsg = (data && data.error) ? data.error : (typeof data === 'string' ? data : 'Request failed');
+        throw new Error(errorMsg);
+      }
+
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred');
+    }
   }
 
   // Auth methods
@@ -66,8 +110,12 @@ class ApiService {
       body: JSON.stringify({ email, password }),
     });
     
-    this.token = response.token;
-    localStorage.setItem('token', response.token);
+    // Store tokens using consistent property names with backend response
+    if (response.accessToken && response.refreshToken) {
+      this.token = response.accessToken;
+      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+    }
     return response;
   }
 
@@ -77,15 +125,22 @@ class ApiService {
       body: JSON.stringify({ name, email, password, role }),
     });
     
-    this.token = response.token;
-    localStorage.setItem('token', response.token);
+    // Store tokens using consistent property names with backend response
+    if (response.accessToken && response.refreshToken) {
+      this.token = response.accessToken;
+      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+    }
     return response;
   }
 
   /**
    * Authenticate user with Google OAuth credential
-   * @param credential - JWT token from Google
-   * @returns Authentication response with user data and JWT token
+   * 
+   * Sends Google JWT credential to backend for verification and user creation/login.
+   * 
+   * @param credential - JWT token from Google OAuth (@react-oauth/google)
+   * @returns Authentication response with user data and JWT tokens
    */
   async loginWithGoogle(credential: string) {
     const response = await this.request('/auth/google', {
@@ -93,14 +148,21 @@ class ApiService {
       body: JSON.stringify({ credential }),
     });
     
-    this.token = response.token;
-    localStorage.setItem('token', response.token);
+    // Store tokens using consistent property names with backend response
+    if (response.accessToken && response.refreshToken) {
+      this.token = response.accessToken;
+      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+    }
     return response;
   }
 
   logout() {
     this.token = null;
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    // Optionally, you might want to redirect to login page or trigger a global logout event
+    window.dispatchEvent(new Event('logout'));
   }
 
   // Task methods

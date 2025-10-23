@@ -14,6 +14,7 @@ import { Dialog } from './components/Dialog';
 import MyCalendar from './components/MyCalendar';
 import PaymentManager from './components/PaymentManager';
 import { useTask } from './contexts/TaskContext';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 export type ViewType = 'tasks' | 'schedule' | 'calendar' | 'teams' | 'payments' | 'profile';
 

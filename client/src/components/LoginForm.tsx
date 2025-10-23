@@ -4,8 +4,22 @@ import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GoogleSignInButton from './GoogleSignInButton';
 
+/**
+ * LoginForm Component
+ * 
+ * Provides a comprehensive authentication interface supporting:
+ * - Traditional email/password login and registration
+ * - Google OAuth authentication
+ * - Guest mode access
+ * 
+ * The component handles form validation, error states, loading states,
+ * and integrates with both custom authentication and Google Sign-In.
+ */
+
 interface LoginFormProps {
+  /** Callback function called when user successfully authenticates */
   onLogin: (user: any) => void;
+  /** Callback function called when user chooses guest mode */
   onGuestMode: () => void;
 }
 
@@ -21,12 +35,25 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGuestMode }) =>
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  /**
+   * Handles traditional email/password form submission
+   * Supports both login and registration based on current form mode
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
+      // Validate required fields
+      if (!formData.email || !formData.password) {
+        throw new Error('Email and password are required');
+      }
+      
+      if (!isLogin && !formData.name) {
+        throw new Error('Name is required for registration');
+      }
+
       let response;
       if (isLogin) {
         response = await apiService.login(formData.email, formData.password);
@@ -37,10 +64,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGuestMode }) =>
           formData.password
         );
       }
-      // Save user id to localStorage
-      if (response && response.user && response.user.id) {
+
+      // Ensure we have a valid response with user data
+      if (!response || !response.user) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Save user ID to localStorage for session persistence
+      if (response.user.id) {
         window.localStorage.setItem('currentUserId', response.user.id);
       }
+
+      // Call the onLogin callback and navigate to main app
       onLogin(response.user);
       navigate('/main');
     } catch (err: any) {
@@ -50,15 +85,39 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGuestMode }) =>
     }
   };
 
+  /**
+   * Handles successful Google authentication
+   * This function is called by GoogleSignInButton when authentication succeeds
+   */
   const handleGoogleSuccess = (user: any) => {
-    // Save user id to localStorage (consistent with regular login)
-    if (user && user.id) {
+    try {
+      // Validate user object
+      if (!user || !user.id) {
+        throw new Error('Invalid user data received from Google authentication');
+      }
+
+      // Save user ID to localStorage (consistent with regular login)
       window.localStorage.setItem('currentUserId', user.id);
+      
+      // Call the onLogin callback and navigate to main app
+      onLogin(user);
+      navigate('/main');
+    } catch (err: any) {
+      setError(err.message || 'Google authentication processing failed');
     }
-    onLogin(user);
-    navigate('/main');
   };
 
+  /**
+   * Handles Google authentication errors
+   */
+  const handleGoogleError = (errorMessage: string) => {
+    setError(errorMessage);
+  };
+
+  /**
+   * Handles guest mode selection
+   * Navigates to the main app without authentication
+   */
   const handleGuestMode = () => {
     navigate('/'); // Redirect to home or landing page
     onGuestMode();
@@ -84,9 +143,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGuestMode }) =>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
               <input
                 type="text"
+                required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter your full name"
+                disabled={loading}
+                minLength={2}
               />
             </div>
           )}
@@ -94,18 +157,25 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGuestMode }) =>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
+              required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your email address"
+              disabled={loading}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
+              required
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your password"
+              disabled={loading}
+              minLength={6}
             />
           </div>
           <button
@@ -124,14 +194,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGuestMode }) =>
           <div className="flex-1 border-t border-gray-300"></div>
         </div>
 
-        {/* Google Sign-In Button */}
-        <GoogleSignInButton
-          onSuccess={handleGoogleSuccess}
-          onError={(error) => setError(error)}
-          disabled={loading}
-          className="mb-6"
+        <GoogleSignInButton 
+          onLogin={handleGoogleSuccess} 
+          onError={handleGoogleError}
         />
-
         <p className="text-sm text-center mt-6">
           {isLogin ? (
             <span>
