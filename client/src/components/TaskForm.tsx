@@ -19,9 +19,11 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) =>
       let currentUserId = window.localStorage.getItem(LOCAL_STORAGE_CURRENT_USER_ID);
       if (!currentUserId) {
         if (users && users.length > 0) {
+          currentUserId = users[0].id;
           window.localStorage.setItem(LOCAL_STORAGE_CURRENT_USER_ID, users[0].id);
         }
       }
+      setFormData(prev => ({ ...prev, assignedTo: currentUserId || '' }));
     }
   }, [users]);
   const { teams } = useTeam();
@@ -190,21 +192,21 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) =>
                 <>
                   {formData.teamId
                     ? (() => {
-                        // If team selected, show all team members
-                        const selectedTeam = teams.find(t => t.id === formData.teamId);
-                        if (!selectedTeam) return null;
-                        return users.filter(u => selectedTeam.members.includes(u.id)).map(user => (
-                          <option key={user.id} value={user.id}>
-                            {user.name}
-                          </option>
-                        ));
-                      })()
+                      // If team selected, show all team members
+                      const selectedTeam = teams.find(t => t.id === formData.teamId);
+                      if (!selectedTeam) return null;
+                      return users.filter(u => selectedTeam.members.includes(u.id)).map(user => (
+                        <option key={user.id} value={user.id}>
+                          {user.name}
+                        </option>
+                      ));
+                    })()
                     : (() => {
-                        // Only current user
-                        const currentUserId = typeof window !== 'undefined' ? window.localStorage.getItem('currentUserId') || '' : '';
-                        const me = users.find(u => u.id === currentUserId);
-                        return me ? <option value={me.id}>{me.name} (Me)</option> : null;
-                      })()}
+                      // Only current user
+                      const currentUserId = typeof window !== 'undefined' ? window.localStorage.getItem('currentUserId') || '' : '';
+                      const me = users.find(u => u.id === currentUserId);
+                      return me ? <option value={me.id}>{me.name} (Me)</option> : null;
+                    })()}
                 </>
               )}
             </select>
