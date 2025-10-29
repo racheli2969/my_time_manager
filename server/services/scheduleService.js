@@ -23,22 +23,42 @@ class ScheduleService {
         prioritizeUrgentTasks = true,
         optimizeForEfficiency = true
       } = options;
+      console.log("options", options);
 
       // Get user preferences
       const userPrefs = await this.getUserPreferences(userId);
-      
+      console.log("userPrefs: ", userPrefs);
+
       // Get user's incomplete tasks
       const tasks = await this.getUserTasks(userId);
-      
+      console.log("tasks: ", tasks);
       // Get personal events if enabled
       const personalEvents = respectPersonalEvents ? await this.getPersonalEvents(userId, startDate, endDate) : [];
-      
-      // Get existing schedule entries that are locked
-      const lockedEntries = await this.getLockedScheduleEntries(userId);
+      console.log("personalEvents: ", personalEvents);
+      const lockedEntries = [];
+      try {
 
+        const columns = db.prepare("PRAGMA table_info(schedule_entries);").all();
+        const columnNames = columns.map(c => c.name);
+
+        if (!columnNames.includes("is_manual")) {
+          db.exec(`ALTER TABLE schedule_entries ADD COLUMN is_manual BOOLEAN DEFAULT FALSE;`);
+        }
+
+        if (!columnNames.includes("is_locked")) {
+          db.exec(`ALTER TABLE schedule_entries ADD COLUMN is_locked BOOLEAN DEFAULT FALSE;`);
+        }
+        console.log("Checked and added missing columns if needed");
+        // Get existing schedule entries that are locked
+        const lockedEntries = await this.getLockedScheduleEntries(userId);
+        console.log("lockedEntries: ", lockedEntries);
+      } catch (error) {
+        console.error("Error fetching locked entries:", error);
+        throw error;
+      }
       // Clear old non-locked schedule entries
       await this.clearOldScheduleEntries(userId);
-
+      console.log("cleared old schedule entries");
       // Generate the optimized schedule
       const { scheduleEntries, conflicts } = await this.createOptimizedSchedule({
         userId,
@@ -50,13 +70,34 @@ class ScheduleService {
         endDate,
         options
       });
+      const scheduleEntriesPrepared = scheduleEntries.map(entry => ({
+        ...entry,
+        start_time: entry.start_time instanceof Date ? entry.start_time.toISOString() : entry.start_time,
+        end_time: entry.end_time instanceof Date ? entry.end_time.toISOString() : entry.end_time,
+        is_manual: entry.is_manual ? 1 : 0,
+        is_locked: entry.is_locked ? 1 : 0,
+        id: String(entry.id),
+        task_id: entry.task_id != null ? String(entry.task_id) : null,
+        interval_id: entry.interval_id != null ? String(entry.interval_id) : null,
+        user_id: entry.user_id != null ? String(entry.user_id) : null,
+        title: String(entry.title),
+        priority: String(entry.priority)
+      }));
 
+      console.log("prepared schedule entries for saving", scheduleEntriesPrepared);
       // Save schedule entries to database
-      await this.saveScheduleEntries(scheduleEntries);
+      await this.saveScheduleEntries(scheduleEntriesPrepared);
+      console.log("saved schedule entries");
 
       // Save conflicts to database
-      await this.saveConflicts(conflicts);
-
+      const conflictsPrepared = conflicts.map(conflict => ({
+        ...conflict,
+        is_resolved: conflict.is_resolved ? 1 : 0
+      }));
+      console.log("prepared conflicts for saving", conflictsPrepared);
+      // Save conflicts to database
+      await this.saveConflicts(conflictsPrepared);
+      console.log("saved conflicts");
       return {
         scheduleEntries: scheduleEntries.map(this.formatScheduleEntry),
         conflicts: conflicts.map(this.formatConflict),
@@ -73,9 +114,19 @@ class ScheduleService {
    * Get user preferences or create default ones
    */
   async getUserPreferences(userId) {
-    let prefs = db.prepare(`
+    console.log("enter getUserPreferences");
+    console.log("userId:", userId);
+
+    let prefs;
+    try {
+      prefs = db.prepare(`
       SELECT * FROM user_preferences WHERE user_id = ?
     `).get(userId);
+      console.log("prefs: ", prefs);
+    } catch (err) {
+      console.error("Error fetching preferences:", err);
+      throw err;
+    }
 
     if (!prefs) {
       // Create default preferences
@@ -91,22 +142,31 @@ class ScheduleService {
         allow_weekend_scheduling: false,
         efficiency_curve: 'normal'
       };
+      console.log("defaultPrefs: ", defaultPrefs);
+      Object.entries(defaultPrefs).forEach(([key, value]) => {
+        console.log(key, typeof value, value);
+      });
 
-      db.prepare(`
+      try {
+        db.prepare(`
         INSERT INTO user_preferences (
           id, user_id, auto_split_long_tasks, max_task_duration, break_duration,
           work_buffer_minutes, preferred_work_start, preferred_work_end,
           allow_weekend_scheduling, efficiency_curve
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
-        defaultPrefs.id, defaultPrefs.user_id, defaultPrefs.auto_split_long_tasks,
-        defaultPrefs.max_task_duration, defaultPrefs.break_duration,
-        defaultPrefs.work_buffer_minutes, defaultPrefs.preferred_work_start,
-        defaultPrefs.preferred_work_end, defaultPrefs.allow_weekend_scheduling,
-        defaultPrefs.efficiency_curve
-      );
-
-      prefs = defaultPrefs;
+          defaultPrefs.id, defaultPrefs.user_id, defaultPrefs.auto_split_long_tasks ? 1 : 0,
+          defaultPrefs.max_task_duration, defaultPrefs.break_duration,
+          defaultPrefs.work_buffer_minutes, defaultPrefs.preferred_work_start,
+          defaultPrefs.preferred_work_end, defaultPrefs.allow_weekend_scheduling ? 1 : 0,
+          defaultPrefs.efficiency_curve
+        );
+        prefs = defaultPrefs;
+        console.log("Created default prefs: ", prefs);
+      } catch (error) {
+        console.error("Error inserting default preferences:", error);
+        throw error;
+      }
     }
 
     return prefs;
@@ -142,8 +202,8 @@ class ScheduleService {
       WHERE user_id = ? 
       AND ((start_time BETWEEN ? AND ?) OR (end_time BETWEEN ? AND ?))
       ORDER BY start_time
-    `).all(userId, startDate.toISOString(), endDate.toISOString(), 
-           startDate.toISOString(), endDate.toISOString());
+    `).all(userId, startDate.toISOString(), endDate.toISOString(),
+      startDate.toISOString(), endDate.toISOString());
   }
 
   /**
@@ -175,10 +235,10 @@ class ScheduleService {
   }) {
     const scheduleEntries = [];
     const conflicts = [];
-    
+
     // Create time slots map for conflict detection
     const timeSlots = this.createTimeSlotsMap(personalEvents, lockedEntries, userPrefs);
-    
+
     // Process tasks and create schedule entries
     for (const task of tasks) {
       try {
@@ -227,7 +287,7 @@ class ScheduleService {
 
     for (const segment of taskSegments) {
       const duration = segment.interval_id ? segment.interval_duration : segment.estimated_duration;
-      
+
       // Find optimal time slot for this segment
       const timeSlot = this.findOptimalTimeSlot({
         duration,
@@ -287,7 +347,7 @@ class ScheduleService {
    */
   shouldSplitTask(task, userPrefs) {
     if (!userPrefs.auto_split_long_tasks) return false;
-    
+
     const duration = task.estimated_duration;
     return duration > userPrefs.max_task_duration || duration > 180; // 3 hours
   }
@@ -303,7 +363,7 @@ class ScheduleService {
 
     const maxDuration = userPrefs.max_task_duration;
     const totalDuration = task.estimated_duration;
-    
+
     if (totalDuration <= maxDuration) {
       return [task];
     }
@@ -315,7 +375,7 @@ class ScheduleService {
     for (let i = 0; i < numSegments; i++) {
       const remainingDuration = totalDuration - (i * segmentDuration);
       const actualDuration = Math.min(segmentDuration, remainingDuration);
-      
+
       segments.push({
         ...task,
         estimated_duration: actualDuration,
@@ -332,7 +392,7 @@ class ScheduleService {
    */
   createTimeSlotsMap(personalEvents, lockedEntries, userPrefs) {
     const timeSlots = new Map();
-    
+
     // Add personal events as blocked time
     personalEvents.forEach(event => {
       const start = new Date(event.start_time);
@@ -357,7 +417,7 @@ class ScheduleService {
     const workStart = this.parseTime(userPrefs.preferred_work_start);
     const workEnd = this.parseTime(userPrefs.preferred_work_end);
     const bufferMinutes = userPrefs.work_buffer_minutes;
-    
+
     let currentDate = new Date(startDate);
     currentDate.setHours(workStart.hours, workStart.minutes, 0, 0);
 
@@ -374,7 +434,7 @@ class ScheduleService {
       dayEnd.setHours(workEnd.hours, workEnd.minutes, 0, 0);
 
       const slot = this.findSlotInDay(currentDate, dayEnd, duration, timeSlots, bufferMinutes);
-      
+
       if (slot) {
         // Apply efficiency curve optimization
         const optimizedSlot = this.optimizeForEfficiency(slot, userPrefs.efficiency_curve, workStart, workEnd);
@@ -394,18 +454,18 @@ class ScheduleService {
    */
   findSlotInDay(dayStart, dayEnd, duration, timeSlots, bufferMinutes) {
     let currentTime = new Date(dayStart);
-    
+
     while (currentTime.getTime() + duration * 60000 <= dayEnd.getTime()) {
       const slotEnd = new Date(currentTime.getTime() + duration * 60000);
-      
+
       if (this.isTimeSlotAvailable(currentTime, slotEnd, timeSlots, bufferMinutes)) {
         return { start: new Date(currentTime), end: slotEnd };
       }
-      
+
       // Move forward by 15 minutes
       currentTime.setMinutes(currentTime.getMinutes() + 15);
     }
-    
+
     return null;
   }
 
@@ -415,7 +475,7 @@ class ScheduleService {
   isTimeSlotAvailable(start, end, timeSlots, bufferMinutes) {
     const bufferStart = new Date(start.getTime() - bufferMinutes * 60000);
     const bufferEnd = new Date(end.getTime() + bufferMinutes * 60000);
-    
+
     // Check for conflicts in the buffered time range
     for (let time = bufferStart; time < bufferEnd; time.setMinutes(time.getMinutes() + 15)) {
       const timeKey = this.getTimeKey(time);
@@ -423,7 +483,7 @@ class ScheduleService {
         return false;
       }
     }
-    
+
     return true;
   }
 
@@ -485,7 +545,7 @@ class ScheduleService {
       stmt.run(
         entry.id, entry.task_id, entry.interval_id, entry.user_id,
         entry.start_time, entry.end_time, entry.title, entry.priority,
-        entry.is_manual || false, entry.is_locked || false
+        entry.is_manual, entry.is_locked
       );
     });
   }
@@ -502,8 +562,8 @@ class ScheduleService {
 
     conflicts.forEach(conflict => {
       stmt.run(
-        conflict.id, conflict.user_id, conflict.schedule_entry_id || null,
-        conflict.conflict_type, conflict.conflict_details, conflict.is_resolved || false
+        conflict.id, conflict.user_id, conflict.schedule_entry_id,
+        conflict.conflict_type, conflict.conflict_details, conflict.is_resolved
       );
     });
   }
@@ -552,12 +612,12 @@ class ScheduleService {
         const end = new Date(entry.end_time);
         return sum + (end - start) / 60000; // minutes
       }, 0),
-      averageTaskDuration: scheduleEntries.length > 0 
+      averageTaskDuration: scheduleEntries.length > 0
         ? scheduleEntries.reduce((sum, entry) => {
-            const start = new Date(entry.start_time);
-            const end = new Date(entry.end_time);
-            return sum + (end - start) / 60000;
-          }, 0) / scheduleEntries.length 
+          const start = new Date(entry.start_time);
+          const end = new Date(entry.end_time);
+          return sum + (end - start) / 60000;
+        }, 0) / scheduleEntries.length
         : 0
     };
   }
@@ -644,7 +704,7 @@ class ScheduleService {
 
     Object.entries(preferences).forEach(([key, value]) => {
       if (key === 'userId' || key === 'id') return;
-      
+
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
       updateFields.push(`${dbKey} = ?`);
       updateValues.push(value);
@@ -652,7 +712,7 @@ class ScheduleService {
 
     if (updateFields.length > 0) {
       updateValues.push(userId);
-      
+
       db.prepare(`
         UPDATE user_preferences 
         SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP

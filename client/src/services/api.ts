@@ -58,10 +58,10 @@ class ApiService {
       },
       ...options,
     };
-
+   
     try {
       const response = await fetch(url, config);
-
+     
       // Handle 401 Unauthorized
       if (response.status === 401 && endpoint !== '/auth/refresh') {
         try {
@@ -97,6 +97,8 @@ class ApiService {
       return data;
     } catch (error) {
       if (error instanceof Error) {
+        console.log(error);
+        
         throw error;
       }
       throw new Error('Network error occurred');
@@ -244,12 +246,15 @@ class ApiService {
   }
 
   // Schedule methods
-  async generateSchedule(userId: string, options: any = {}) {
-    return this.request('/schedule/generate', {
+  async generateSchedule(userId: string, options: any = {}) {  
+  
+    return this.request('/schedule', {
       method: 'POST',
       body: JSON.stringify(options),
     });
+    
   }
+
 
   async getSchedule() {
     return this.request('/schedule');

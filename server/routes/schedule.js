@@ -7,8 +7,11 @@ import ScheduleService from '../services/scheduleService.js';
 const router = express.Router();
 
 // Generate intelligent schedule
-router.post('/generate', authenticateToken, async (req, res) => {
-  try {
+
+router.post('/', authenticateToken,async (req, res) => { 
+  console.log("Generate schedule request received");
+
+ try {
     const {
       startDate,
       endDate,
@@ -28,6 +31,7 @@ router.post('/generate', authenticateToken, async (req, res) => {
     };
 
     const result = await ScheduleService.generateSchedule(req.user.id, options);
+    console.log("result:", result);
     
     res.json({
       scheduleEntries: result.scheduleEntries,

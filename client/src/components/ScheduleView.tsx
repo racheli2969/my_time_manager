@@ -187,7 +187,7 @@ export const ScheduleView: React.FC = () => {
     }
   };
 
-  const handleGenerateSchedule = async () => {
+  const handleGenerateSchedule = async () => { 
     if (!currentUser?.id) return;
     
     setIsGenerating(true);
