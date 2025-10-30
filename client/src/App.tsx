@@ -15,6 +15,7 @@ import MyCalendar from './components/MyCalendar';
 import PaymentManager from './components/PaymentManager';
 import { useTask } from './contexts/TaskContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { ENV_CONFIG } from './config/env';
 
 export type ViewType = 'tasks' | 'schedule' | 'calendar' | 'teams' | 'payments' | 'profile';
 
@@ -108,22 +109,25 @@ const LoginPage: React.FC = () => {
 
 
 function App() {
+  const clientID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   return (
-    <BrowserRouter>
-      <TaskProvider>
-        <TeamProvider>
-          <UserProvider>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/main" element={<MainPage />} />
-              <Route path="/main/*" element={<MainPage />} />
-              <Route path="/guest" element={<MainPage />} />
-              <Route path="/" element={<LoginPage />} /> {/* Default to login */}
-            </Routes>
-          </UserProvider>
-        </TeamProvider>
-      </TaskProvider>
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={clientID}>
+      <BrowserRouter>
+        <TaskProvider>
+          <TeamProvider>
+            <UserProvider>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/main" element={<MainPage />} />
+                <Route path="/main/*" element={<MainPage />} />
+                <Route path="/guest" element={<MainPage />} />
+                <Route path="/" element={<LoginPage />} /> {/* Default to login */}
+              </Routes>
+            </UserProvider>
+          </TeamProvider>
+        </TaskProvider>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }
 

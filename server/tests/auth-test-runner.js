@@ -6,7 +6,8 @@
  */
 
 // Simple test for authentication API endpoints
-const API_BASE_URL = 'http://localhost:3001/api';
+import { ENV_CONFIG } from '../config/env';
+const API_BASE_URL = ENV_CONFIG.API_BASE_URL;
 
 /**
  * Test suite for authentication functionality
