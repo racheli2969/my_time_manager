@@ -46,15 +46,16 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/schedule', scheduleRoutes);
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  //app.use((join(__dirname, '../dist')));
-  app.use(express.static(join(__dirname, '../dist')));
+
+// // Serve static files in production
+// if (process.env.NODE_ENV === 'production') {
+//   //app.use((join(__dirname, '../dist')));
+//   app.use(express.static(join(__dirname, '../dist')));
   
-  app.get('*', (req, res) => {
-    res.sendFile(join(__dirname, '../dist/index.html'));
-  });
-}
+//   app.get('*', (req, res) => {
+//     res.sendFile(join(__dirname, '../dist/index.html'));
+//   });
+// }
 
 // Health check
 app.get('/api/health', (req, res) => {
