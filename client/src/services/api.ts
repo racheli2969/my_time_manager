@@ -1,7 +1,5 @@
-import { ENV_CONFIG } from '../config/env';
-
 // Use centralized environment configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ENV_CONFIG.API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 class ApiService {
   async getTasksByUserOrAssigned(userId: string, page?: number, pageSize?: number) {
