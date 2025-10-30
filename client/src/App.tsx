@@ -116,6 +116,8 @@ function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/main" element={<MainPage />} />
+              <Route path="/main/*" element={<MainPage />} />
+              <Route path="/guest" element={<MainPage />} />
               <Route path="/" element={<LoginPage />} /> {/* Default to login */}
             </Routes>
           </UserProvider>

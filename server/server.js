@@ -41,8 +41,8 @@ app.use((req, res, next) => {
 app.use(json());
 
 // API Routes
-app.use('/', authRoutes); // Keep auth routes at root for OAuth callbacks
-app.use('/api', authRoutes); // Also mount auth routes under /api for other auth operations
+// app.use('/', (req, res) => {
+// app.use('/api', authRoutes); // Also mount auth routes under /api for other auth operations
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/teams', teamRoutes);
