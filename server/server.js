@@ -13,6 +13,7 @@ import scheduleRoutes from './routes/schedule.js';
 
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { auth } from 'google-auth-library';
 
 // recreate __dirname and __filename
 const __filename = fileURLToPath(import.meta.url);
@@ -39,7 +40,9 @@ app.use((req, res, next) => {
 
 app.use(json());
 
-// Routes
+// API Routes
+app.use('/', authRoutes); // Keep auth routes at root for OAuth callbacks
+app.use('/api', authRoutes); // Also mount auth routes under /api for other auth operations
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/teams', teamRoutes);
