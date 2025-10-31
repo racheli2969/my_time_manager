@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Open the database
-const db = new Database(path.join(__dirname, 'taskmanagement.db'));
+const db = new Database(path.join(__dirname, 'data', 'taskmanagement.db'));
 
 console.log('=== Users Table Schema ===');
 const tableInfo = db.prepare("PRAGMA table_info(users)").all();

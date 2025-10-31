@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(env.VITE_GOOGLE_CLIENT_ID || ''),
       'import.meta.env.VITE_ENABLE_GOOGLE_AUTH': JSON.stringify(env.VITE_ENABLE_GOOGLE_AUTH || ''),
       'import.meta.env.VITE_ENABLE_PAYMENTS': JSON.stringify(env.VITE_ENABLE_PAYMENTS || ''),
+      'import.meta.env.VITE_STRIPE_PUBLIC_KEY': JSON.stringify(env.VITE_STRIPE_PUBLIC_KEY || ''),
     },
   };
 });

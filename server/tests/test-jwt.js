@@ -1,5 +1,5 @@
 ﻿import 'dotenv/config';
-import { generateAccessToken, verifyToken } from './config/jwt.js';
+import { generateAccessToken, verifyToken } from '../config/jwt.js';
 
 console.log('Testing JWT functionality...');
 
