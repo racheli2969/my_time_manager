@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express, { json } from 'express';
 import cors from 'cors';
-import { join } from 'path';
 import {initializeDatabase} from "./database.js";
 
 // Import routes
@@ -12,7 +11,7 @@ import userRoutes from './routes/users.js';
 import scheduleRoutes from './routes/schedule.js';
 
 import { fileURLToPath } from 'url';
-import path from 'path';
+import path ,{join } from 'path';
 import { auth } from 'google-auth-library';
 
 // recreate __dirname and __filename
@@ -50,16 +49,12 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/schedule', scheduleRoutes);
 
+app.use(express.static(join(__dirname, 'dist')));
 
-// // Serve static files in production
-// if (process.env.NODE_ENV === 'production') {
-//   //app.use((join(__dirname, '../dist')));
-//   app.use(express.static(join(__dirname, '../dist')));
-  
-//   app.get('*', (req, res) => {
-//     res.sendFile(join(__dirname, '../dist/index.html'));
-//   });
-// }
+// Fallback for React Router
+app.get('/*', (req, res) => {
+  res.sendFile(join(__dirname, 'dist', 'index.html'));
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
