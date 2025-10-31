@@ -41,8 +41,16 @@ app.use((req, res, next) => {
 app.use(json());
 
 // API Routes
-// app.use('/', (req, res) => {
-// app.use('/api', authRoutes); // Also mount auth routes under /api for other auth operations
+app.get('/', (req, res) => {
+  res.send('Welcome to the API');
+});
+app.use('/', (req, res) => {
+  res.send('Welcome to the API');
+});
+app.get('/api', (req, res) => {
+  res.send('Welcome to the API');
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/teams', teamRoutes);
