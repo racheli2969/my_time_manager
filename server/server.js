@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express, { json } from 'express';
 import cors from 'cors';
-import { join } from 'path';
 import {initializeDatabase} from "./database.js";
 
 // Import routes
@@ -12,7 +11,7 @@ import userRoutes from './routes/users.js';
 import scheduleRoutes from './routes/schedule.js';
 
 import { fileURLToPath } from 'url';
-import path from 'path';
+import path ,{join } from 'path';
 import { auth } from 'google-auth-library';
 
 // recreate __dirname and __filename
