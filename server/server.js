@@ -49,13 +49,6 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/schedule', scheduleRoutes);
 
-// Serve the built frontend
-app.use(express.static(join(__dirname, '../client/dist')));
-
-app.get('*', (req, res) => {
-  res.sendFile(join(__dirname, '../client/dist/index.html'));
-});
-
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
