@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Filter, MoreHorizontal } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { TaskCard } from './TaskCard';
 import { TaskForm } from './TaskForm';
 import { useTask } from '../core/contexts/TaskContext';

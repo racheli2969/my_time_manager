@@ -35,8 +35,8 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [taskPage, setTaskPage] = useState(1);
   const [hasMoreTasks, setHasMoreTasks] = useState(true);
   const pageSize = 6;
-  const [teamTasks, setTeamTasks] = useState<Task[]>([]);
-  const [events, setEvents] = useState<ScheduleEntry[]>([]);
+  const [teamTasks] = useState<Task[]>([]);
+  const [events] = useState<ScheduleEntry[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [personalEvents, setPersonalEvents] = useState<any[]>([]);

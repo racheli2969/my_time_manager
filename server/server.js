@@ -3,6 +3,12 @@ import express, { json } from 'express';
 import cors from 'cors';
 import {initializeDatabase} from "./database.js";
 
+// Import configuration
+import { config } from './config/appConfig.js';
+
+// Import middleware
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+
 // Import routes
 import authRoutes from './routes/auth.js' ;
 import taskRoutes from './routes/tasks.js';
@@ -19,22 +25,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = config.server.port;
 
 // Middleware
-app.use(cors({
-  // Load from .env file
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5173'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors(config.cors));
 
 // Additional headers for Google OAuth compatibility
 app.use((req, res, next) => {
-  // Allow cross-origin requests for Google OAuth
-  res.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  res.header('Cross-Origin-Opener-Policy', config.security.crossOriginOpenerPolicy);
+  res.header('Cross-Origin-Embedder-Policy', config.security.crossOriginEmbedderPolicy);
   next();
 });
 
@@ -54,17 +53,17 @@ app.get('/api/health', (req, res) => {
 
 // Welcome routes (AFTER API routes so they don't intercept them)
 app.get('/', (req, res) => {
-  res.send('Welcome to the API');
+  res.send('Welcome to the Task Management API');
 });
 app.get('/api', (req, res) => {
-  res.send('Welcome to the API');
+  res.send('Welcome to the Task Management API');
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
+// 404 handler for undefined routes
+app.use(notFoundHandler);
+
+// Global error handling middleware (must be last)
+app.use(errorHandler);
 
 // Initialize database and return the server (useful for tests)
 const startServer = async () => {

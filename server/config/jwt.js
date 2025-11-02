@@ -1,15 +1,13 @@
 import 'dotenv/config';
 import pkg from 'jsonwebtoken';
+import { config } from './appConfig.js';
+
 const { sign, verify } = pkg;
 
-// JWT Configuration
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
-
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required');
-}
+// JWT Configuration from centralized config
+const JWT_SECRET = config.jwt.secret;
+const JWT_EXPIRES_IN = config.jwt.accessTokenExpiry;
+const JWT_REFRESH_EXPIRES_IN = config.jwt.refreshTokenExpiry;
 
 /**
  * Generate access token

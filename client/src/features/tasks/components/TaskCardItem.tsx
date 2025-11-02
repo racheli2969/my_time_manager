@@ -10,7 +10,6 @@ import {
   User,
   MoreVertical,
   Scissors,
-  ChevronDown,
 } from 'lucide-react';
 import { Task } from '../../../types';
 import { useTask } from '../../../core/contexts/TaskContext';

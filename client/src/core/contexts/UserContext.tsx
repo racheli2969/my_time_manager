@@ -24,7 +24,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return stored ? JSON.parse(stored) : null;
   });
   const [users, setUsers] = useState<User[]>([]);
-  const [teamMembers, setTeamMembers] = useState<User[]>([]);
+  const [teamMembers] = useState<User[]>([]);
 
   React.useEffect(() => {
     loadUsers();
