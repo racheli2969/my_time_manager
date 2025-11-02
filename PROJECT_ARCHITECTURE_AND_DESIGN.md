@@ -842,7 +842,7 @@ CREATE TABLE schedule_conflicts (
 
 ### **Database Relationships**
 
-![Database Schema Diagram](./docs/images/database-schema.png)
+![Database Schema Diagram](https://github.com/racheli2969/my_time_manager/blob/main/docs/images/DB_ARCHITECTURE.png)
 
 **Entity Relationship Overview:**
 
