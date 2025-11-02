@@ -24,21 +24,25 @@ function GoogleSignInButton({ onLogin, onError }: GoogleSignInButtonProps) {
    */
   const handleGoogleSuccess = async (credentialResponse: any) => {
     console.log('🔐 Google Sign-In Success - Processing credential...');
+    console.log('Credential response keys:', Object.keys(credentialResponse || {}));
     
     try {
-      if (!credentialResponse.credential) {
+      if (!credentialResponse?.credential) {
         throw new Error('No credential received from Google');
       }
 
       console.log('📤 Sending Google credential to backend...');
+      console.log('Credential length:', credentialResponse.credential.length);
 
       // Send the Google JWT credential to our backend for verification and user creation/login
       const response = await apiService.loginWithGoogle(credentialResponse.credential);
       
       console.log('📥 Backend response received:', {
+        responseKeys: Object.keys(response || {}),
         hasUser: !!response?.user,
         hasTokens: !!(response?.accessToken && response?.refreshToken),
-        userId: response?.user?.id
+        userId: response?.user?.id,
+        fullResponse: JSON.stringify(response, null, 2)
       });
       
       if (response && response.user) {
@@ -53,6 +57,12 @@ function GoogleSignInButton({ onLogin, onError }: GoogleSignInButtonProps) {
         // Call the onLogin callback with the authenticated user
         onLogin(response.user);
       } else {
+        console.error('Invalid response structure:', {
+          response,
+          hasResponse: !!response,
+          hasUser: !!response?.user,
+          userData: response?.user
+        });
         throw new Error('Invalid response from server - missing user data');
       }
     } catch (error) {

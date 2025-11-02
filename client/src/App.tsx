@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { LoginForm } from './components/LoginForm';
@@ -20,6 +20,7 @@ import { ENV_CONFIG } from './config/env';
 export type ViewType = 'tasks' | 'schedule' | 'calendar' | 'teams' | 'payments' | 'profile';
 
 const MainPage: React.FC = () => {
+  const location = useLocation();
   const [currentView, setCurrentView] = useState<ViewType>('tasks');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { currentUser } = useUser();
@@ -27,6 +28,17 @@ const MainPage: React.FC = () => {
   const [dialog, setDialog] = useState<{ message: string; redirect?: boolean } | null>(null);
   const navigate = useNavigate();
   const prevUserIdRef = React.useRef<string | null>(null);
+
+  // Sync URL path with current view
+  useEffect(() => {
+    const pathSegments = location.pathname.split('/').filter(Boolean);
+    const view = pathSegments[pathSegments.length - 1];
+    
+    const validViews: ViewType[] = ['tasks', 'schedule', 'calendar', 'teams', 'payments', 'profile'];
+    if (validViews.includes(view as ViewType)) {
+      setCurrentView(view as ViewType);
+    }
+  }, [location.pathname]);
 
   React.useEffect(() => {
     const currentUserId = currentUser?.id || null;
@@ -42,6 +54,11 @@ const MainPage: React.FC = () => {
       }
     }
   }, [currentUser?.id]); // Only depend on the user ID, not the functions
+
+  const handleViewChange = (view: ViewType) => {
+    setCurrentView(view);
+    navigate(`/main/${view}`);
+  };
 
   const handleAction = (action: () => void) => {
     if (!currentUser) {
@@ -76,7 +93,7 @@ const MainPage: React.FC = () => {
       <div className="flex">
         <Sidebar
           currentView={currentView}
-          onViewChange={setCurrentView}
+          onViewChange={handleViewChange}
           toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           isOpen={isSidebarOpen}
         />
@@ -119,7 +136,12 @@ function App() {
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/main" element={<MainPage />} />
-                <Route path="/main/*" element={<MainPage />} />
+                <Route path="/main/tasks" element={<MainPage />} />
+                <Route path="/main/schedule" element={<MainPage />} />
+                <Route path="/main/calendar" element={<MainPage />} />
+                <Route path="/main/teams" element={<MainPage />} />
+                <Route path="/main/payments" element={<MainPage />} />
+                <Route path="/main/profile" element={<MainPage />} />
                 <Route path="/guest" element={<MainPage />} />
                 <Route path="/" element={<LoginPage />} /> {/* Default to login */}
               </Routes>
