@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Users, UserPlus, Trash2 } from 'lucide-react';
-import { useTeam } from '../contexts/TeamContext';
-import { useUser } from '../contexts/UserContext';
+import { useTeam } from '../core/contexts/TeamContext';
+import { useUser } from '../core/contexts/UserContext';
 import { TeamForm } from './TeamForm';
 import { Team } from '../types';
 

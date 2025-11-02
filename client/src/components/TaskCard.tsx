@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, User, MoreVertical, Scissors } from 'lucide-react';
 import { Task } from '../types';
-import { useTask } from '../contexts/TaskContext';
+import { useTask } from '../core/contexts/TaskContext';
 
 interface TaskCardProps {
   task: Task;
@@ -10,7 +10,7 @@ interface TaskCardProps {
   onStatusChange: (taskId: string, status: Task['status']) => void;
 }
 
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '../core/contexts/UserContext';
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDelete, onStatusChange }) => {
   const [showMenu, setShowMenu] = useState(false);

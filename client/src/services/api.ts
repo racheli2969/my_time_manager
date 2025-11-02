@@ -18,10 +18,6 @@ class ApiService {
     this.token = localStorage.getItem('token');
   }
 
-  // Ensure token is refreshed from localStorage on every request
-  private refreshToken() {
-    this.token = localStorage.getItem('token');
-  }
 
   private async refreshAuthToken(): Promise<void> {
     try {

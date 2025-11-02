@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Team } from '../types';
-import { useTeam } from '../contexts/TeamContext';
-import { useUser } from '../contexts/UserContext';
+import { useTeam } from '../core/contexts/TeamContext';
+import { useUser } from '../core/contexts/UserContext';
 
 interface TeamFormProps {
   team?: Team | null;

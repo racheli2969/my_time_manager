@@ -23,13 +23,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, tog
 
   return (
     <aside
-      className={
-        isOpen
-          ? "fixed left-0 top-16 h-full w-64 bg-white shadow-sm border-r border-gray-200 transition-all duration-300 flex flex-col"
-          : "fixed left-0 top-16 h-full w-12 bg-white shadow-sm border-r border-gray-200 transition-all duration-300 flex flex-col items-center"
-      }
+      className={`
+        fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white shadow-sm border-r border-gray-200 
+        transition-all duration-300 flex flex-col z-40
+        ${isOpen ? "w-64" : "w-12"}
+      `}
     >
-      <nav className={isOpen ? "p-4 flex-1" : "p-2 flex-1 w-full flex flex-col items-center"}>
+      <nav className={isOpen ? "p-4 pt-6 flex-1 overflow-y-auto" : "p-2 pt-4 flex-1 w-full flex flex-col items-center overflow-y-auto"}>
         <ul className={isOpen ? "space-y-2" : "space-y-3 w-full flex flex-col items-center"}>
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -39,14 +39,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, tog
               <li key={item.id} className={isOpen ? "w-full" : ""}>
                 <button
                   onClick={() => onViewChange(item.id)}
-                  className={`flex items-center ${isOpen ? "space-x-3 px-4 py-3 w-full" : "justify-center p-2"} rounded-lg text-left transition-colors ${isActive
+                  className={`flex items-center ${isOpen ? "space-x-3 px-4 py-3 w-full" : "justify-center p-2"} rounded-lg text-left transition-all duration-200 cursor-pointer ${isActive
                     ? 'bg-blue-50 text-blue-700 border border-blue-200'
                     : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   title={isOpen ? '' : item.label}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-blue-700' : 'text-gray-500'}`} />
-                  {isOpen && <span className="font-medium">{item.label}</span>}
+                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-blue-700' : 'text-gray-500'}`} />
+                  {isOpen && <span className="font-medium truncate">{item.label}</span>}
                 </button>
               </li>
             );
@@ -54,16 +54,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, tog
         </ul>
       </nav>
 
-      <div className={isOpen ? "p-4 border-t border-gray-200 w-full flex justify-center" : "p-2 border-t border-gray-200 w-full flex justify-center"}>
+      <div className={`${isOpen ? "p-4" : "p-2"} border-t border-gray-200 w-full flex justify-center bg-gray-50`}>
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded hover:bg-gray-200 transition"
+          className="p-2 rounded-lg bg-white hover:bg-blue-50 hover:border-blue-300 border border-gray-300 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md cursor-pointer"
           aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           {isOpen ? (
-            <ChevronLeft className="w-6 h-6 text-gray-600" />
+            <ChevronLeft className="w-5 h-5 text-gray-700 hover:text-blue-600" />
           ) : (
-            <ChevronRight className="w-6 h-6 text-gray-600" />
+            <ChevronRight className="w-5 h-5 text-gray-700 hover:text-blue-600" />
           )}
         </button>
       </div>

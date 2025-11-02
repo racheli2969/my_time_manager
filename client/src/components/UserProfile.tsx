@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Save, Clock, Calendar } from 'lucide-react';
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '../core/contexts/UserContext';
+import { useAuthRedirect } from '../hooks/useAuthRedirect';
+import { AuthDialog } from './AuthDialog';
 
 export const UserProfile: React.FC = () => {
+  const { requireAuth, dialog } = useAuthRedirect();
   const { currentUser, updateUser } = useUser();
   const [formData, setFormData] = useState({
     
@@ -39,6 +42,14 @@ export const UserProfile: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!requireAuth(() => {
+      performSave();
+    }, 'You need to be signed in to save profile changes. Would you like to login now?')) {
+      return;
+    }
+  };
+
+  const performSave = () => {
     if (currentUser) {
       updateUser({
         ...currentUser,
@@ -64,6 +75,16 @@ export const UserProfile: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Auth Dialog */}
+      {dialog && (
+        <AuthDialog
+          show={dialog.show}
+          message={dialog.message}
+          onConfirm={dialog.onConfirm}
+          onCancel={dialog.onCancel}
+        />
+      )}
+
       <div>
         <h2 className="text-3xl font-bold text-gray-900">Profile</h2>
         <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>

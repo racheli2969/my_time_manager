@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
-import { LoginForm } from './components/LoginForm';
-import { TaskManager } from './components/TaskManager';
-import { ScheduleView } from './components/ScheduleView';
-import { TeamManager } from './components/TeamManager';
+import { Header } from './core/layout/Header';
+import { Sidebar } from './core/layout/Sidebar';
+import { LoginPage as AuthLoginPage } from './features/auth';
+import { TaskManagerPage } from './features/tasks/pages/TaskManagerPage';
+import { CalendarPage } from './features/calendar';
+import { TeamManagerPage } from './features/teams';
+import { PaymentManagerPage } from './features/payments';
+import { ScheduleView } from './features/schedule';
 import { UserProfile } from './components/UserProfile';
-import { TaskProvider } from './contexts/TaskContext';
-import { UserProvider, useUser } from './contexts/UserContext';
-import { TeamProvider } from './contexts/TeamContext';
-import { Dialog } from './components/Dialog';
-import MyCalendar from './components/MyCalendar';
-import PaymentManager from './components/PaymentManager';
-import { useTask } from './contexts/TaskContext';
+import { TaskProvider } from './core/contexts/TaskContext';
+import { UserProvider, useUser } from './core/contexts/UserContext';
+import { TeamProvider } from './core/contexts/TeamContext';
+import { AuthDialog } from './components/AuthDialog';
+import { useTask } from './core/contexts/TaskContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ENV_CONFIG } from './config/env';
+import { useAuthRedirect } from './hooks/useAuthRedirect';
 
 export type ViewType = 'tasks' | 'schedule' | 'calendar' | 'teams' | 'payments' | 'profile';
 
@@ -25,9 +26,18 @@ const MainPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { currentUser } = useUser();
   const { loadTasks, resetTaskPaging } = useTask();
-  const [dialog, setDialog] = useState<{ message: string; redirect?: boolean } | null>(null);
+  const { dialog } = useAuthRedirect();
   const navigate = useNavigate();
   const prevUserIdRef = React.useRef<string | null>(null);
+
+  // Check for redirect after login
+  useEffect(() => {
+    const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+    if (redirectPath && currentUser) {
+      sessionStorage.removeItem('redirectAfterLogin');
+      navigate(redirectPath);
+    }
+  }, [currentUser, navigate]);
 
   // Sync URL path with current view
   useEffect(() => {
@@ -60,30 +70,22 @@ const MainPage: React.FC = () => {
     navigate(`/main/${view}`);
   };
 
-  const handleAction = (action: () => void) => {
-    if (!currentUser) {
-      setDialog({ message: 'You need to be signed in to perform this action', redirect: true });
-      return;
-    }
-    action();
-  };
-
   const renderCurrentView = () => {
     switch (currentView) {
       case 'tasks':
-        return <TaskManager onAction={(action) => handleAction(action)} />;
+        return <TaskManagerPage />;
       case 'schedule':
         return <ScheduleView />;
       case 'calendar':
-        return <MyCalendar />;
+        return <CalendarPage />;
       case 'teams':
-        return <TeamManager />;
+        return <TeamManagerPage />;
       case 'payments':
-        return <PaymentManager />;
+        return <PaymentManagerPage />;
       case 'profile':
         return <UserProfile />;
       default:
-        return <TaskManager onAction={(action) => handleAction(action)} />;
+        return <TaskManagerPage />;
     }
   };
 
@@ -97,14 +99,19 @@ const MainPage: React.FC = () => {
           toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           isOpen={isSidebarOpen}
         />
-        <main className={isSidebarOpen ? "flex-1 ml-64 p-6 relative" : "flex-1 ml-12 p-6 relative"}>
+        <main 
+          className={`flex-1 p-4 sm:p-6 relative overflow-x-hidden transition-all duration-300`}
+          style={{
+            marginLeft: isSidebarOpen ? '16rem' : '3rem',
+          }}
+        >
           {dialog && (
-            <Dialog
-              title="Action Required"
+            <AuthDialog
+              show={dialog.show}
               message={dialog.message}
-              onClose={() => setDialog(null)}
-              onRedirect={dialog.redirect ? () => navigate('/login') : undefined}
-              redirectLabel="Go to Login" open={false}                />
+              onConfirm={dialog.onConfirm}
+              onCancel={dialog.onCancel}
+            />
           )}
           {renderCurrentView()}
         </main>
@@ -121,7 +128,7 @@ const LoginPage: React.FC = () => {
     navigate('/main'); // Navigate to the landing page for guest mode
   };
 
-  return <LoginForm onLogin={login} onGuestMode={handleGuestMode} />;
+  return <AuthLoginPage onLogin={login} onGuestMode={handleGuestMode} />;
 };
 
 

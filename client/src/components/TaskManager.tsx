@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Plus, Filter, MoreHorizontal } from 'lucide-react';
 import { TaskCard } from './TaskCard';
 import { TaskForm } from './TaskForm';
-import { useTask } from '../contexts/TaskContext';
-import { useUser } from '../contexts/UserContext';
+import { useTask } from '../core/contexts/TaskContext';
+import { useUser } from '../core/contexts/UserContext';
 import { Task } from '../types';
 
 interface TaskManagerProps {

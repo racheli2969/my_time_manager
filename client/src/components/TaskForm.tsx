@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { LOCAL_STORAGE_CURRENT_USER_ID } from '../utils/constants';
 import { X } from 'lucide-react';
 import { Task } from '../types';
-import { useUser } from '../contexts/UserContext';
-import { useTeam } from '../contexts/TeamContext';
+import { useUser } from '../core/contexts/UserContext';
+import { useTeam } from '../core/contexts/TeamContext';
 
 interface TaskFormProps {
   task?: Task | null;
