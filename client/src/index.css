@@ -21,4 +21,25 @@
     caret-color: transparent !important;
     user-select: none;
   }
+  
+  /* Keep ring effects for accessibility but hide caret everywhere */
+  input[type="email"],
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="search"],
+  textarea {
+    /*show caret for input fields*/
+    caret-color: auto !important;
+  }
+  /*hide caret for other elements*/
+  /* input[type="email"],
+  input[type="date"],
+  input[type="time"],
+  input[type="search"],
+  textarea {
+    caret-color: transparent !important;
+  } */
 }
