@@ -3,8 +3,9 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import { createPaymentIntent } from "../services/paymentService.ts"; // API call to backend
+import { ENV_CONFIG } from "../config/env";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "");
+const stripePromise = loadStripe(ENV_CONFIG.STRIPE_PUBLIC_KEY || "");
 
 const PaymentForm: React.FC<{ selectedPlan: any }> = ({ selectedPlan }) => {
     const stripe = useStripe();

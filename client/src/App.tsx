@@ -109,7 +109,7 @@ const LoginPage: React.FC = () => {
 
 
 function App() {
-  const clientID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const clientID = ENV_CONFIG.GOOGLE_CLIENT_ID;
   return (
     <GoogleOAuthProvider clientId={clientID}>
       <BrowserRouter>
