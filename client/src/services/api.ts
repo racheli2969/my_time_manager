@@ -148,16 +148,53 @@ class ApiService {
    * @returns Authentication response with user data and JWT tokens
    */
   async loginWithGoogle(credential: string) {
+    console.log('🔐 API Service: Sending Google credential to backend...');
     const response = await this.request('/auth/google', {
       method: 'POST',
       body: JSON.stringify({ credential }),
     });
     
+    console.log('📥 API Service: Google login response received:', {
+      hasResponse: !!response,
+      responseType: typeof response,
+      responseKeys: response ? Object.keys(response) : [],
+      hasUser: !!response?.user,
+      hasAccessToken: !!response?.accessToken,
+      hasRefreshToken: !!response?.refreshToken,
+      userId: response?.user?.id
+    });
+
+    // Validate response structure
+    if (!response) {
+      throw new Error('Empty response from server - server may be down or CORS issue');
+    }
+
+    if (!response.accessToken) {
+      console.error('❌ Invalid response structure - missing accessToken. Response:', response);
+      throw new Error('Invalid response from server - missing accessToken');
+    }
+
+    if (!response.user) {
+      console.error('❌ Invalid response structure - missing user object. Response keys:', Object.keys(response));
+      throw new Error('Invalid response from server - missing user data');
+    }
+
+    if (!response.user.id || !response.user.email) {
+      console.error('❌ User object incomplete:', response.user);
+      throw new Error('Invalid response from server - incomplete user data');
+    }
+    
     // Store tokens using consistent property names with backend response
-    if (response.accessToken && response.refreshToken) {
+    if (response?.accessToken && response?.refreshToken) {
       this.token = response.accessToken;
       localStorage.setItem('token', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken);
+      console.log('✅ Tokens stored in localStorage');
+    } else {
+      console.warn('⚠️ Response missing tokens:', { 
+        hasAccessToken: !!response?.accessToken,
+        hasRefreshToken: !!response?.refreshToken 
+      });
     }
     return response;
   }
