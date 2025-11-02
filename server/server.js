@@ -40,17 +40,7 @@ app.use((req, res, next) => {
 
 app.use(json());
 
-// API Routes
-app.get('/', (req, res) => {
-  res.send('Welcome to the API');
-});
-app.use('/', (req, res) => {
-  res.send('Welcome to the API');
-});
-app.get('/api', (req, res) => {
-  res.send('Welcome to the API');
-});
-
+// API Routes - MUST be before catch-all routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/teams', teamRoutes);
@@ -60,6 +50,14 @@ app.use('/api/schedule', scheduleRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Welcome routes (AFTER API routes so they don't intercept them)
+app.get('/', (req, res) => {
+  res.send('Welcome to the API');
+});
+app.get('/api', (req, res) => {
+  res.send('Welcome to the API');
 });
 
 // Error handling middleware

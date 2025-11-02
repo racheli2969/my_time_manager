@@ -435,6 +435,13 @@ router.post('/google', async (req, res) => {
     };
 
     console.log('🎉 Google authentication successful for user:', user.email);
+    console.log('Response structure:', {
+      hasAccessToken: !!responseData.accessToken,
+      hasRefreshToken: !!responseData.refreshToken,
+      hasUser: !!responseData.user,
+      userId: responseData.user?.id,
+      userEmail: responseData.user?.email
+    });
 
     // Return successful authentication response
     res.json(responseData);

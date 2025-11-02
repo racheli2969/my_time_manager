@@ -16,11 +16,18 @@ export default defineConfig(({ mode }) => {
   console.log('Mode:', mode);
   console.log('---');
 
-  // 1. Try system environment variables first
-  const systemVars = loadEnv(mode, process.cwd(), 'VITE_');
-  if (Object.keys(systemVars).length > 0) {
-    Object.assign(env, systemVars);
-    console.log('✅ Loaded from system environment');
+  // 1. Load from system environment variables (process.env)
+  // This is what Render uses when you set variables in the dashboard
+  const systemEnvVars: Record<string, string> = {};
+  ['VITE_API_BASE_URL', 'VITE_GOOGLE_CLIENT_ID', 'VITE_ENABLE_GOOGLE_AUTH', 'VITE_ENABLE_PAYMENTS', 'VITE_STRIPE_PUBLIC_KEY'].forEach(key => {
+    if (process.env[key]) {
+      systemEnvVars[key] = process.env[key]!;
+    }
+  });
+
+  if (Object.keys(systemEnvVars).length > 0) {
+    Object.assign(env, systemEnvVars);
+    console.log('✅ Loaded from system environment variables');
   }
 
   // 2. Try .env.json (Windows-safe, JSON encoding-proof)
@@ -28,19 +35,30 @@ export default defineConfig(({ mode }) => {
     const envJsonPath = path.join(process.cwd(), '.env.json');
     if (fs.existsSync(envJsonPath)) {
       const envJson = JSON.parse(fs.readFileSync(envJsonPath, 'utf8'));
-      Object.assign(env, envJson);
-      console.log('✅ Loaded from .env.json (Windows-safe)');
+      // Only add missing values from .env.json (don't override system vars)
+      Object.keys(envJson).forEach(key => {
+        if (!env[key]) {
+          env[key] = envJson[key];
+        }
+      });
+      if (Object.keys(systemEnvVars).length === 0) {
+        console.log('✅ Loaded from .env.json (Windows-safe)');
+      }
     }
   } catch (error) {
     // Silently fail - not all environments need .env.json
   }
 
-  // 3. Fallback to .env (standard approach)
+  // 3. Fallback to .env file (standard approach)
   if (!env.VITE_API_BASE_URL) {
     try {
       const envFile = loadEnv(mode, process.cwd(), 'VITE_');
-      Object.assign(env, envFile);
-      if (Object.keys(envFile).length > 0) {
+      Object.keys(envFile).forEach(key => {
+        if (!env[key]) {
+          env[key] = envFile[key];
+        }
+      });
+      if (Object.keys(envFile).length > 0 && Object.keys(systemEnvVars).length === 0) {
         console.log('✅ Loaded from .env file');
       }
     } catch (error) {
